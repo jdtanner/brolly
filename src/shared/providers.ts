@@ -122,13 +122,36 @@ const SECRET_SCHEMA = (
     provider: Secret.SchemaAttributeType.STRING,
 });
 
+// Gio._promisify() wrappers look the original up through `this`, so these
+// must be called as methods of the Secret namespace, never detached.
+const SecretAsync = Secret as unknown as {
+    password_lookup(
+        schema: Secret.Schema,
+        attributes: Record<string, string>,
+        cancellable: Gio.Cancellable | null
+    ): Promise<string | null>;
+    password_store(
+        schema: Secret.Schema,
+        attributes: Record<string, string>,
+        collection: string | null,
+        label: string,
+        password: string,
+        cancellable: Gio.Cancellable | null
+    ): Promise<boolean>;
+    password_clear(
+        schema: Secret.Schema,
+        attributes: Record<string, string>,
+        cancellable: Gio.Cancellable | null
+    ): Promise<boolean>;
+};
+
 export async function getApiKey(provider: ProviderId): Promise<string | null> {
     try {
-        return await (
-            Secret.password_lookup as unknown as (
-                ...args: unknown[]
-            ) => Promise<string | null>
-        )(SECRET_SCHEMA, {provider}, null);
+        return await SecretAsync.password_lookup(
+            SECRET_SCHEMA,
+            {provider},
+            null
+        );
     } catch (e) {
         console.warn(`Could not read API key from keyring: ${String(e)}`);
         return null;
@@ -140,12 +163,8 @@ export async function setApiKey(
     key: string
 ): Promise<void> {
     key = key.trim();
-    const call = (fn: unknown, ...args: unknown[]): Promise<unknown> =>
-        (fn as (...a: unknown[]) => Promise<unknown>)(...args);
-
     if (key) {
-        await call(
-            Secret.password_store,
+        await SecretAsync.password_store(
             SECRET_SCHEMA,
             {provider},
             Secret.COLLECTION_DEFAULT,
@@ -154,7 +173,7 @@ export async function setApiKey(
             null
         );
     } else {
-        await call(Secret.password_clear, SECRET_SCHEMA, {provider}, null);
+        await SecretAsync.password_clear(SECRET_SCHEMA, {provider}, null);
     }
     clearCache();
 }
