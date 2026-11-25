@@ -73,7 +73,7 @@ jobs:
         run: |
           TAG=${GITHUB_REF_NAME}
           VERSION=${TAG#v}
-          BUNDLE=$(find artifacts -name '*.flatpak' | head -1)
+          BUNDLE=$(find artifacts -type f -name '*.flatpak' | head -1)
           test -n "$BUNDLE"
           mv "$BUNDLE" "Brolly-$VERSION.flatpak"
           NOTES=$(python3 - "$VERSION" <<'PY'
@@ -89,5 +89,5 @@ jobs:
           )
           gh release create "$TAG" --title "Brolly $VERSION" --notes "$NOTES" \
             "Brolly-$VERSION.flatpak" \
-            $(find artifacts -name 'brolly-panel@*.zip') \
-            $(find artifacts -name 'brolly-*.tar.xz')
+            $(find artifacts -type f -name 'brolly-panel@*.zip') \
+            $(find artifacts -type f -name 'brolly-*.tar.xz')
