@@ -42,6 +42,29 @@ function convertTemp(celsius, unit) {
     }
 }
 
+/**
+ * Title shown in the date menu. The menu shortens titles of non-city
+ * locations to the nearest libgweather city when that city's name appears
+ * in them ("... (Nottinghamshire)" -> "Nottingham"), so present as a city.
+ */
+function displayLocation(title, latitude, longitude) {
+    return {
+        get_name: () => title,
+        get_level: () => GWeather.LocationLevel.CITY,
+        has_coords: () => true,
+        get_coords: () => [latitude, longitude],
+    };
+}
+
+/** "Langley Mill · Eastwood (Nottinghamshire)" when the provider's site differs. */
+function panelTitle(name, source) {
+    if (!source?.name)
+        return name;
+    const same = source.name.toLowerCase().startsWith(name.toLowerCase()) &&
+        (source.distanceM ?? 0) < 500;
+    return same ? name : `${name} · ${source.name}`;
+}
+
 /** One forecast point; the subset of GWeather.Info the date menu uses. */
 class ForecastPoint {
     constructor(point) {
@@ -77,8 +100,9 @@ class RemoteInfo {
         this._handlers = new Map(); // id -> {after, callback}
     }
 
-    // What the date menu shows as the title: for automatic (detached)
-    // locations, the name the service resolved (e.g. a village).
+    // What the date menu shows as the title: the name the service resolved
+    // for automatic locations, plus the provider's forecast site if it
+    // differs. Only used for display; comparisons use _location.
     get location() {
         return this._displayLocation ?? this._location;
     }
@@ -164,10 +188,11 @@ class RemoteInfo {
                     } catch (e) {
                         this._data = {valid: false, error: String(e)};
                     }
-                    if (detached && this._data.name) {
-                        this._displayLocation = GWeather.Location.new_detached(
-                            this._data.name, null, latitude, longitude);
-                    }
+                    const baseName = (detached && this._data.name) ||
+                        location.get_name() || '';
+                    this._displayLocation = displayLocation(
+                        panelTitle(baseName, this._data.source),
+                        latitude, longitude);
                 }
                 this._emitUpdated();
             });

@@ -126,6 +126,10 @@ export class WeatherInfo extends GObject.Object {
     public getWindSpeedString(): string {
         return this.get_wind();
     }
+    /** The provider's own site/point the forecast is for, if it says. */
+    public getForecastSource(): ForecastSource | null {
+        return null;
+    }
 }
 
 /* ---------- libgweather-backed implementation ---------- */
@@ -527,8 +531,38 @@ export class DataInfo extends WeatherInfo {
     }
 }
 
+/** Where the provider's forecast actually applies, if it says. */
+export type ForecastSource = {
+    name: string;
+    /** Distance from the requested point, metres. */
+    distanceM?: number;
+};
+
+/**
+ * "Forecast for Eastwood (Nottinghamshire), 1.6 km away", or null when the
+ * source is unknown or is the location itself.
+ */
+export function describeForecastSource(
+    source: ForecastSource | null,
+    locationName: string
+): string | null {
+    if (!source?.name) return null;
+    const same =
+        source.name.toLowerCase().startsWith(locationName.toLowerCase()) &&
+        (source.distanceM ?? 0) < 500;
+    if (same) return null;
+    if (source.distanceM === undefined)
+        return _('Forecast for %s').format(source.name);
+    const distance =
+        source.distanceM < 1000
+            ? _('%d m').format(Math.round(source.distanceM))
+            : _('%.1f km').format(source.distanceM / 1000);
+    return _('Forecast for %s, %s away').format(source.name, distance);
+}
+
 export type ForecastData = {
     current: WeatherSample;
+    source?: ForecastSource;
     /** Time-ordered forecast samples, all later than current.time. */
     forecast: WeatherSample[];
 };
@@ -539,6 +573,7 @@ export type Fetcher = (location: GWeather.Location) => Promise<ForecastData>;
 export class RemoteInfo extends DataInfo {
     private fetcher: Fetcher;
     private forecast: DataInfo[] = [];
+    private source: ForecastSource | null = null;
     private fetching = false;
     private lastError?: string;
 
@@ -562,6 +597,7 @@ export class RemoteInfo extends DataInfo {
         this.fetcher(this.location)
             .then(data => {
                 this.sample = data.current;
+                this.source = data.source ?? null;
                 this.forecast = data.forecast.map(
                     s => new DataInfo(this.location, this.attribution, s)
                 );
@@ -577,6 +613,10 @@ export class RemoteInfo extends DataInfo {
                 this.fetching = false;
                 this.emit('updated');
             });
+    }
+
+    public override getForecastSource(): ForecastSource | null {
+        return this.source;
     }
 
     public getError(): string | undefined {

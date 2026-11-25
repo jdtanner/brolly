@@ -31,7 +31,11 @@ import {WeatherApplication} from './application.js';
 import {MainWindow} from './window.js';
 import {HourlyForecastBox} from './hourlyForecast.js';
 import {DailyForecastBox} from './dailyForecast.js';
-import {RemoteInfo, WeatherInfo} from '../shared/weatherInfo.js';
+import {
+    describeForecastSource,
+    RemoteInfo,
+    WeatherInfo,
+} from '../shared/weatherInfo.js';
 
 const SCROLLING_ANIMATION_TIME = 400000; //us
 
@@ -42,6 +46,7 @@ export class WeatherWidget extends Adw.Bin {
     declare private _placesButton: Gtk.MenuButton;
     declare private _temperatureLabel: Gtk.Label;
     declare private _apparentLabel: Gtk.Label;
+    declare private _sourceLabel: Gtk.Label;
     declare private _forecastStack: Adw.ViewStack;
     declare private _startButton: Gtk.Button;
     declare private _endButton: Gtk.Button;
@@ -68,6 +73,7 @@ export class WeatherWidget extends Adw.Bin {
                     'placesButton',
                     'temperatureLabel',
                     'apparentLabel',
+                    'sourceLabel',
                     'forecastStack',
                     'startButton',
                     'endButton',
@@ -245,6 +251,15 @@ export class WeatherWidget extends Adw.Bin {
         const label = Util.getNameAndCountry(this.info.location);
         this._placesButton.set_label(label.join(', '));
 
+        // e.g. "Forecast for Eastwood (Nottinghamshire), 1.6 km away" when
+        // the provider forecasts for a nearby site rather than this place.
+        const source = describeForecastSource(
+            this.info.getForecastSource(),
+            this.info.get_location_name()
+        );
+        this._sourceLabel.label = source ?? '';
+        this._sourceLabel.visible = !!source;
+
         this.worldView.refilter();
 
         this._conditionsImage.iconName = `${this.info.get_icon_name()}-large`;
@@ -257,7 +272,10 @@ export class WeatherWidget extends Adw.Bin {
         const [, apparentValue] = info.get_value_apparent(
             GWeather.TemperatureUnit.DEFAULT
         );
-        this._apparentLabel.label = _('Feels like %.0f°').format(apparentValue);
+        // Round first so e.g. -0.4 shows as "0°", not "-0°".
+        const apparentRounded = Math.round(apparentValue) || 0;
+        this._apparentLabel.label =
+            _('Feels like %.0f°').format(apparentRounded);
         this._apparentLabel.visible = apparentValue !== tempValue;
 
         this._forecastHourly.update(this.info);

@@ -29,6 +29,7 @@ import Secret from 'gi://Secret?version=1';
 import {
     Condition,
     ForecastData,
+    ForecastSource,
     Fetcher,
     GWeatherInfoAdapter,
     RemoteInfo,
@@ -618,23 +619,36 @@ async function metOfficeSeries(
     lat: number,
     lon: number,
     apiKey: string
-): Promise<WeatherSample[]> {
+): Promise<{samples: WeatherSample[]; source?: ForecastSource}> {
     const url =
         `${MET_OFFICE_BASE}${timesteps}?latitude=${lat.toFixed(2)}` +
         `&longitude=${lon.toFixed(2)}` +
-        '&excludeParameterMetadata=true&includeLocationName=false';
+        '&excludeParameterMetadata=true&includeLocationName=true';
     const data = (await getJson(
         url,
         {apikey: apiKey},
         `met-office:${apiKey}:${url}`
     )) as {
-        features?: {properties?: {timeSeries?: Record<string, unknown>[]}}[];
+        features?: {
+            properties?: {
+                timeSeries?: Record<string, unknown>[];
+                location?: {name?: string};
+                requestPointDistance?: number;
+            };
+        }[];
     };
-    const series = data.features?.[0]?.properties?.timeSeries;
+    const properties = data.features?.[0]?.properties;
+    const series = properties?.timeSeries;
     if (!series) throw new Error('Unexpected Met Office response');
-    return series
-        .map(e => metOfficeSample(e, lat, lon))
-        .filter((s): s is WeatherSample => !!s);
+    const name = properties?.location?.name;
+    return {
+        samples: series
+            .map(e => metOfficeSample(e, lat, lon))
+            .filter((s): s is WeatherSample => !!s),
+        source: name
+            ? {name, distanceM: num(properties?.requestPointDistance)}
+            : undefined,
+    };
 }
 
 const metOfficeFetcher: Fetcher = async location => {
@@ -646,15 +660,17 @@ const metOfficeFetcher: Fetcher = async location => {
 
     const [lat, lon] = coords(location);
     // Hourly covers 48 h; three-hourly extends it to 7 days.
-    const [hourly, threeHourly] = await Promise.all([
+    const [hourlyResult, threeHourlyResult] = await Promise.all([
         metOfficeSeries('hourly', lat, lon, apiKey),
         metOfficeSeries('three-hourly', lat, lon, apiKey).catch(
             (e: unknown) => {
                 console.warn(`Met Office three-hourly failed: ${String(e)}`);
-                return [] as WeatherSample[];
+                return {samples: [] as WeatherSample[]};
             }
         ),
     ]);
+    const hourly = hourlyResult.samples;
+    const threeHourly = threeHourlyResult.samples;
     if (hourly.length === 0) throw new Error('Empty Met Office forecast');
 
     const now = Date.now() / 1000;
@@ -662,10 +678,13 @@ const metOfficeFetcher: Fetcher = async location => {
     for (const s of hourly) if (s.time <= now) current = s;
 
     const lastHourly = hourly[hourly.length - 1].time;
-    return splitCurrent(current, [
-        ...hourly,
-        ...threeHourly.filter(s => s.time > lastHourly),
-    ]);
+    return {
+        ...splitCurrent(current, [
+            ...hourly,
+            ...threeHourly.filter(s => s.time > lastHourly),
+        ]),
+        source: hourlyResult.source,
+    };
 };
 
 /* ---------- OpenWeatherMap One Call 3.0 ---------- */

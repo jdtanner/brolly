@@ -29,7 +29,7 @@ import {WeatherInfo} from '../shared/weatherInfo.js';
 const ForecastInterface = `
 <node>
   <interface name="org.gnome.Weather.Forecast">
-    <!-- Returns JSON: {valid, error, name, attribution,
+    <!-- Returns JSON: {valid, error, name, attribution, source,
          current: {time, tempC, icon}, forecast: [{time, tempC, icon}]}.
          An empty name means "name it from the coordinates". -->
     <method name="GetForecast">
@@ -132,6 +132,7 @@ export class ForecastService {
             error: error ?? null,
             name: location.get_name(),
             attribution: info.get_attribution(),
+            source: info.getForecastSource(),
             current: valid ? point(info) : null,
             forecast: valid
                 ? info
