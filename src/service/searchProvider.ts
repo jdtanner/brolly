@@ -39,11 +39,9 @@ const SearchProviderInterface = new TextDecoder().decode(
 );
 
 function getCountryName(location: GWeather.Location): string | null {
-    let base: GWeather.Location | null = location;
-    while (base && base.get_level() > GWeather.LocationLevel.COUNTRY)
-        base = base.get_parent();
-
-    return base?.get_name() ?? null;
+    if (location.get_level() <= GWeather.LocationLevel.COUNTRY)
+        return location.get_name();
+    return Util.getCountry(location)?.get_name() ?? null;
 }
 
 export class WeatherSearchProvider {

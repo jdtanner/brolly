@@ -194,13 +194,32 @@ function getTempString(info: WeatherInfo): string {
     }
 }
 
-function getNameAndCountry(
-    location: GWeather.Location
-): [string] | [string, string] {
+/**
+ * The country a location is in. Custom (detached) locations, such as an
+ * automatic location that was later saved, lose their place in libgweather's
+ * tree when deserialized, so fall back to the nearest known city's country.
+ */
+function getCountry(location: GWeather.Location): GWeather.Location | null {
     let country = location.get_parent();
     while (country && country.get_level() > GWeather.LocationLevel.COUNTRY)
         country = country.get_parent();
+    if (country?.get_level() === GWeather.LocationLevel.COUNTRY) return country;
 
+    if (
+        location.get_level() === GWeather.LocationLevel.DETACHED &&
+        location.has_coords()
+    ) {
+        const [lat, lon] = location.get_coords();
+        const city = GWeather.Location.get_world()?.find_nearest_city(lat, lon);
+        if (city && city !== location) return getCountry(city);
+    }
+    return null;
+}
+
+function getNameAndCountry(
+    location: GWeather.Location
+): [string] | [string, string] {
+    const country = getCountry(location);
     if (country) return [location.get_name() ?? '', country.get_name() ?? ''];
     else return [location.get_name() ?? ''];
 }
@@ -223,4 +242,5 @@ export {
     easeOutCubic,
     getWeatherConditions,
     getNameAndCountry,
+    getCountry,
 };
