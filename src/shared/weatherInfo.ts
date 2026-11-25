@@ -130,6 +130,14 @@ export class WeatherInfo extends GObject.Object {
     public getForecastSource(): ForecastSource | null {
         return null;
     }
+    /** Why the last refresh failed, if it did (older data may remain). */
+    public getError(): string | undefined {
+        return undefined;
+    }
+    /** When data was last fetched successfully (ms since epoch), if known. */
+    public getLastSuccess(): number | undefined {
+        return undefined;
+    }
 }
 
 /* ---------- libgweather-backed implementation ---------- */
@@ -576,6 +584,7 @@ export class RemoteInfo extends DataInfo {
     private source: ForecastSource | null = null;
     private fetching = false;
     private lastError?: string;
+    private lastSuccess?: number;
 
     static {
         GObject.registerClass(this);
@@ -602,6 +611,7 @@ export class RemoteInfo extends DataInfo {
                     s => new DataInfo(this.location, this.attribution, s)
                 );
                 this.lastError = undefined;
+                this.lastSuccess = Date.now();
             })
             .catch((e: unknown) => {
                 this.lastError = e instanceof Error ? e.message : String(e);
@@ -619,8 +629,12 @@ export class RemoteInfo extends DataInfo {
         return this.source;
     }
 
-    public getError(): string | undefined {
+    public override getError(): string | undefined {
         return this.lastError;
+    }
+
+    public override getLastSuccess(): number | undefined {
+        return this.lastSuccess;
     }
 
     public override get_forecast_list(): WeatherInfo[] {

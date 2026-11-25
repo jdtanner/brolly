@@ -78,6 +78,14 @@ class LocationListModel extends GObject.Object {
         this.items_changed(0, 0, this.list.length);
     }
 
+    /** Built-in locations whose (lower-cased) name is in `names`. */
+    public findByName(names: string[]): GWeather.Location[] {
+        const wanted = new Set(names);
+        return this.list.filter(l =>
+            wanted.has(l.get_name()?.toLowerCase() ?? '')
+        );
+    }
+
     public vfunc_get_item_type(): GObject.GType {
         return GWeather.Location.$gtype;
     }
@@ -298,11 +306,11 @@ export class LocationSearchEntry extends Adw.Bin {
         if (serial !== this.searchSerial) return; // superseded
 
         // Skip places the built-in list already offered (same name nearby).
-        const local: GWeather.Location[] = [];
-        for (let i = 0; i < this.localMatches.get_n_items(); i++) {
-            const item = this.localMatches.get_item(i);
-            if (item instanceof GWeather.Location) local.push(item);
-        }
+        // Compare with the whole built-in list: the filtered model may
+        // still be filtering incrementally.
+        const local = locationListModel.findByName(
+            places.map(p => p.name.toLowerCase())
+        );
         const duplicate = (p: Providers.PlaceResult): boolean =>
             local.some(l => {
                 if (l.get_name()?.toLowerCase() !== p.name.toLowerCase())

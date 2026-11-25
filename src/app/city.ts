@@ -31,11 +31,7 @@ import {WeatherApplication} from './application.js';
 import {MainWindow} from './window.js';
 import {HourlyForecastBox} from './hourlyForecast.js';
 import {DailyForecastBox} from './dailyForecast.js';
-import {
-    describeForecastSource,
-    RemoteInfo,
-    WeatherInfo,
-} from '../shared/weatherInfo.js';
+import {describeForecastSource, WeatherInfo} from '../shared/weatherInfo.js';
 
 const SCROLLING_ANIMATION_TIME = 400000; //us
 
@@ -284,19 +280,29 @@ export class WeatherWidget extends Adw.Bin {
         if (this.updatedTimeTimeoutId)
             GLib.Source.remove(this.updatedTimeTimeoutId);
 
-        this.updatedTime = Date.now();
-        this._updatedTimeLabel.label = this.formatUpdatedTime();
+        // If the latest refresh failed but older data is still shown, say
+        // how old it is and why, rather than "Updated just now".
+        this.updatedTime = info.getLastSuccess() ?? Date.now();
+        this.refreshUpdatedLabel();
 
         this.updatedTimeTimeoutId = GLib.timeout_add_seconds(
             GLib.PRIORITY_DEFAULT,
             UPDATED_TIME_TIMEOUT,
             () => {
-                this._updatedTimeLabel.label = this.formatUpdatedTime();
+                this.refreshUpdatedLabel();
                 return GLib.SOURCE_CONTINUE;
             }
         );
 
         this._attributionLabel.label = this.info.get_attribution();
+    }
+
+    private refreshUpdatedLabel(): void {
+        const error = this.info?.getError();
+        const updated = this.formatUpdatedTime();
+        this._updatedTimeLabel.label = error
+            ? _('%s Could not refresh: %s').format(updated, error)
+            : updated;
     }
 
     private formatUpdatedTime(): string {
@@ -446,8 +452,7 @@ export class WeatherView extends Adw.Bin {
     private onUpdate(info: WeatherInfo): void {
         this.infoPage.clear();
         if (!info.is_valid()) {
-            const error =
-                info instanceof RemoteInfo ? info.getError() : undefined;
+            const error = info.getError();
             this.errorPage.description = GLib.markup_escape_text(
                 error ?? _('Could not fetch weather data for this location.'),
                 -1

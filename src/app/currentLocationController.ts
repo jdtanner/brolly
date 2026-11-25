@@ -102,6 +102,7 @@ export class CurrentLocationController {
     private onLocationUpdated(simple?: Geoclue.Simple): void {
         const geoclueLocation = simple?.get_location();
         if (!geoclueLocation) {
+            this.lookupSerial++; // cancel any pending name lookup
             this.currentLocation = undefined;
             this.world.currentLocationChanged(undefined);
             return;

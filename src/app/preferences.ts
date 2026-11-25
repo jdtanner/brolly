@@ -24,6 +24,7 @@ import * as Providers from '../shared/providers.js';
 
 export class PreferencesDialog extends Adw.PreferencesDialog {
     private settings: Gio.Settings;
+    private handlerIds: number[] = [];
     private providerGroups = new Map<
         Providers.ProviderId,
         Adw.PreferencesGroup
@@ -35,6 +36,11 @@ export class PreferencesDialog extends Adw.PreferencesDialog {
 
     public constructor() {
         super({title: _('Preferences'), search_enabled: false});
+        // Settings outlive the dialog's widgets: drop handlers on close.
+        this.connect('closed', () => {
+            for (const id of this.handlerIds) this.settings.disconnect(id);
+            this.handlerIds = [];
+        });
 
         this.settings = Util.getSettings('org.gnome.Weather');
 
@@ -50,8 +56,12 @@ export class PreferencesDialog extends Adw.PreferencesDialog {
         this.buildApiKeyGroup(page, 'met-office');
         this.buildApiKeyGroup(page, 'openweathermap');
 
-        this.settings.connect('changed::provider', () => this.syncVisibility());
+        this.watch('changed::provider', () => this.syncVisibility());
         this.syncVisibility();
+    }
+
+    private watch(signal: string, callback: () => void): void {
+        this.handlerIds.push(this.settings.connect(signal, callback));
     }
 
     private buildProviderGroup(): Adw.PreferencesGroup {
@@ -74,7 +84,7 @@ export class PreferencesDialog extends Adw.PreferencesDialog {
             row.subtitle = providers[row.selected].description;
         };
         sync();
-        this.settings.connect('changed::provider', sync);
+        this.watch('changed::provider', sync);
         row.connect('notify::selected', () => {
             const id = providers[row.selected]?.id;
             if (id && id !== this.settings.get_string('provider'))
@@ -100,11 +110,21 @@ export class PreferencesDialog extends Adw.PreferencesDialog {
                     .includes(nick);
             };
             sync();
-            this.settings.connect('changed::libgweather-providers', sync);
+            this.watch('changed::libgweather-providers', sync);
             row.connect('notify::active', () => {
                 const current = this.settings.get_strv('libgweather-providers');
                 const has = current.includes(nick);
                 if (row.active === has) return;
+                // libgweather needs at least one backend.
+                if (!row.active && current.length === 1) {
+                    row.active = true;
+                    this.add_toast(
+                        new Adw.Toast({
+                            title: _('At least one backend must stay on'),
+                        })
+                    );
+                    return;
+                }
                 this.settings.set_strv(
                     'libgweather-providers',
                     row.active

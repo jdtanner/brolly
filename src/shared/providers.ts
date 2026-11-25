@@ -231,7 +231,32 @@ function clearCache(): void {
     }
 }
 
+// Delete entries nothing will read again (older than the longest max age,
+// the 30-day geocoding cache). Runs once per process.
+let cachePruned = false;
+function pruneCache(): void {
+    if (cachePruned) return;
+    cachePruned = true;
+    const dir = Gio.File.new_for_path(cacheDir());
+    const cutoff = Date.now() / 1000 - 31 * 24 * 3600;
+    try {
+        const files = dir.enumerate_children(
+            'standard::name,time::modified',
+            Gio.FileQueryInfoFlags.NONE,
+            null
+        );
+        let info;
+        while ((info = files.next_file(null))) {
+            const modified = info.get_modification_date_time()?.to_unix() ?? 0;
+            if (modified < cutoff) dir.get_child(info.get_name()).delete(null);
+        }
+    } catch {
+        /* no cache yet */
+    }
+}
+
 function readCache(key: string, maxAge: number): unknown {
+    pruneCache();
     try {
         const [ok, contents] = GLib.file_get_contents(cachePath(key));
         if (!ok) return undefined;
@@ -901,11 +926,3 @@ export function buildInfo(
             );
     }
 }
-
-/** Parsers exposed for tests/providers.js. */
-export const _parsers = {
-    metOfficeSample,
-    owmSample,
-    owmCondition,
-    splitCurrent,
-};

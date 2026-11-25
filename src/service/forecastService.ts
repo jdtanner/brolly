@@ -120,12 +120,7 @@ export class ForecastService {
         });
 
         const valid = info.is_valid();
-        const error =
-            !valid && 'getError' in info
-                ? (
-                      info as unknown as {getError(): string | undefined}
-                  ).getError()
-                : undefined;
+        const error = valid ? undefined : info.getError();
 
         return JSON.stringify({
             valid,

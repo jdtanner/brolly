@@ -129,12 +129,17 @@ export class WorldModel extends GObject.Object {
         if (previous?.location.equal(location)) return;
 
         // Drop the old automatic entry unless the user also saved it.
+        // (removeLocationInternal emits its own items_changed.)
         if (previous?._isCurrentLocation && previous !== this.selectedLocation)
             this.removeLocationInternal(previous);
 
+        const oldLength = this.allInfos.length;
         this.currentLocationInfo = this.buildInfo(location);
         this.addCurrentLocation(this.currentLocationInfo);
-        this.invalidate();
+        this.getAll();
+        // @ts-expect-error ts-for-gir doesn't know how to handle interfaces
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        this.items_changed(0, oldLength, this.allInfos.length);
     }
 
     public getRecent(): GWeatherInfoData | undefined {
