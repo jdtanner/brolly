@@ -9,6 +9,7 @@
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+import Geoclue from 'gi://Geoclue';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GWeather from 'gi://GWeather';
@@ -94,9 +95,10 @@ class ForecastPoint {
 const COARSE_FIX_METRES = 5000;
 
 class RemoteInfo {
-    constructor(proxy, client) {
+    constructor(proxy, client, getAccuracy) {
         this._proxy = proxy;
         this._client = client;
+        this._getAccuracy = getAccuracy;
         this._location = null;
         this._displayLocation = null;
         this._data = null;
@@ -180,7 +182,7 @@ class RemoteInfo {
         // unless the fix is too coarse to name a village from.
         let name = location.get_name() ?? '';
         if (detached) {
-            const accuracy = this._client._gclueService?.location?.accuracy ?? 0;
+            const accuracy = this._getAccuracy();
             name = accuracy > COARSE_FIX_METRES
                 ? GWeather.Location.get_world()
                     .find_nearest_city(latitude, longitude).get_name()
@@ -238,7 +240,8 @@ export default class WeatherProviderBridge extends Extension {
         if (!client)
             return;
 
-        const info = new RemoteInfo(proxy, client);
+        const info = new RemoteInfo(proxy, client, () =>
+            this._fixAccuracy ?? client._gclueService?.location?.accuracy ?? 0);
         info.set_location(this._originalInfo.location);
         // Mirrors what WeatherClient's constructor connects to its info.
         info.connect_after('updated', () => {
@@ -268,11 +271,83 @@ export default class WeatherProviderBridge extends Extension {
             client._loadInfo();
         else
             client.emit('changed');
+
+        this._startBetterGeoclue();
+    }
+
+    // The Shell asks GeoClue for CITY accuracy, which may be answered from
+    // GeoIP (km out). Also ask for NEIGHBORHOOD (WiFi) and use whichever
+    // fix is more accurate. Only acts while the Shell itself is following
+    // the automatic location, so the user's location settings still apply.
+    _startBetterGeoclue() {
+        const client = this._client;
+        client._onGClueLocationChanged = () => this._applyAutoLocation();
+        this._reconnectShellGeoclue(client._onGClueLocationChanged);
+
+        Geoclue.Simple.new('org.gnome.Shell',
+            Geoclue.AccuracyLevel.NEIGHBORHOOD, this._cancellable,
+            (_source, result) => {
+                try {
+                    this._geoclue = Geoclue.Simple.new_finish(result);
+                } catch (e) {
+                    if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
+                        log(`Weather Provider Bridge: GeoClue: ${e.message}`);
+                    return;
+                }
+                this._geoclueId = this._geoclue.connect('notify::location',
+                    () => this._applyAutoLocation());
+                this._applyAutoLocation();
+            });
+    }
+
+    // Point the Shell's existing GeoClue signal at `handler`.
+    _reconnectShellGeoclue(handler) {
+        const client = this._client;
+        if (!client._gclueLocationChangedId || !client._gclueService)
+            return;
+        client._gclueService.disconnect(client._gclueLocationChangedId);
+        client._gclueLocationChangedId =
+            client._gclueService.connect('notify::location', handler);
+    }
+
+    _applyAutoLocation() {
+        const client = this._client;
+        // Only while the Shell is monitoring the automatic location.
+        if (!client || !client._gclueLocationChangedId)
+            return;
+
+        const fixes = [this._geoclue?.location, client._gclueService?.location]
+            .filter(Boolean)
+            .sort((a, b) => a.accuracy - b.accuracy);
+        const fix = fixes[0];
+        if (!fix)
+            return;
+
+        this._fixAccuracy = fix.accuracy;
+        // Rounded to ~1 km: small jitter doesn't trigger a new fetch.
+        const round = v => Math.round(v * 100) / 100;
+        client._setLocation(GWeather.Location.new_detached('', null,
+            round(fix.latitude), round(fix.longitude)));
+    }
+
+    _stopBetterGeoclue() {
+        if (this._geoclue && this._geoclueId)
+            this._geoclue.disconnect(this._geoclueId);
+        this._geoclue = null;
+        this._geoclueId = 0;
+        this._fixAccuracy = undefined;
+
+        const client = this._client;
+        if (client && Object.hasOwn(client, '_onGClueLocationChanged')) {
+            delete client._onGClueLocationChanged; // back to the prototype's
+            this._reconnectShellGeoclue(client._onGClueLocationChanged.bind(client));
+        }
     }
 
     disable() {
         this._cancellable?.cancel();
         this._cancellable = null;
+        this._stopBetterGeoclue();
 
         const client = this._client;
         if (client && this._info) {
