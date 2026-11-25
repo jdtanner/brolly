@@ -89,9 +89,14 @@ class ForecastPoint {
 }
 
 /** Stand-in for the WeatherClient's GWeather.Info. */
+// Coarser GeoClue fixes (e.g. GeoIP) get the nearest big city's name rather
+// than a possibly wrong village.
+const COARSE_FIX_METRES = 5000;
+
 class RemoteInfo {
-    constructor(proxy) {
+    constructor(proxy, client) {
         this._proxy = proxy;
+        this._client = client;
         this._location = null;
         this._displayLocation = null;
         this._data = null;
@@ -171,8 +176,16 @@ class RemoteInfo {
         const [latitude, longitude] = location.get_coords();
         const detached =
             location.get_level() === GWeather.LocationLevel.DETACHED;
-        // Empty name: let the service name an automatic location itself.
-        const name = detached ? '' : location.get_name() ?? '';
+        // Empty name: let the service name an automatic location itself,
+        // unless the fix is too coarse to name a village from.
+        let name = location.get_name() ?? '';
+        if (detached) {
+            const accuracy = this._client._gclueService?.location?.accuracy ?? 0;
+            name = accuracy > COARSE_FIX_METRES
+                ? GWeather.Location.get_world()
+                    .find_nearest_city(latitude, longitude).get_name()
+                : '';
+        }
 
         this._proxy.GetForecastRemote(latitude, longitude, name,
             (result, error) => {
@@ -188,8 +201,7 @@ class RemoteInfo {
                     } catch (e) {
                         this._data = {valid: false, error: String(e)};
                     }
-                    const baseName = (detached && this._data.name) ||
-                        location.get_name() || '';
+                    const baseName = this._data.name || name;
                     this._displayLocation = displayLocation(
                         panelTitle(baseName, this._data.source),
                         latitude, longitude);
@@ -226,7 +238,7 @@ export default class WeatherProviderBridge extends Extension {
         if (!client)
             return;
 
-        const info = new RemoteInfo(proxy);
+        const info = new RemoteInfo(proxy, client);
         info.set_location(this._originalInfo.location);
         // Mirrors what WeatherClient's constructor connects to its info.
         info.connect_after('updated', () => {

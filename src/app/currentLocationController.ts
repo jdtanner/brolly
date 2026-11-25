@@ -24,6 +24,9 @@ import Gio from 'gi://Gio';
 import {WorldModel} from '../shared/world.js';
 import * as Providers from '../shared/providers.js';
 
+/** Fixes less accurate than this are treated as "somewhere near a city". */
+const COARSE_FIX_METRES = 5000;
+
 export class CurrentLocationController {
     private world: WorldModel;
     private simple?: Geoclue.Simple;
@@ -41,7 +44,7 @@ export class CurrentLocationController {
         if (Geoclue.Simple.new_with_thresholds) {
             Geoclue.Simple.new_with_thresholds(
                 pkg.name,
-                Geoclue.AccuracyLevel.CITY,
+                Geoclue.AccuracyLevel.NEIGHBORHOOD,
                 0 /* time threshold */,
                 100 /* distance threshold */,
                 null,
@@ -52,7 +55,7 @@ export class CurrentLocationController {
         } else {
             Geoclue.Simple.new(
                 pkg.name,
-                Geoclue.AccuracyLevel.CITY,
+                Geoclue.AccuracyLevel.NEIGHBORHOOD,
                 null,
                 (_, result) => {
                     this.onSimpleReady(result);
@@ -107,8 +110,22 @@ export class CurrentLocationController {
         // libgweather's database only knows larger cities, so snapping to
         // find_nearest_city() can be miles off (e.g. a village reported as
         // the nearby city). Use the real position, named via OpenStreetMap.
-        const {latitude, longitude} = geoclueLocation;
+        const {latitude, longitude, accuracy} = geoclueLocation;
         const serial = ++this.lookupSerial;
+
+        // A coarse fix (e.g. GeoIP when a WiFi scan fails) can be 10-20 km
+        // out; naming a village from it would be confidently wrong. Use the
+        // nearest big city until a better fix arrives.
+        if (accuracy > COARSE_FIX_METRES) {
+            const city = GWeather.Location.get_world()?.find_nearest_city(
+                latitude,
+                longitude
+            );
+            this.currentLocation = city ?? undefined;
+            this.world.currentLocationChanged(this.currentLocation);
+            return;
+        }
+
         void Providers.reverseGeocode(latitude, longitude).then(name => {
             if (serial !== this.lookupSerial) return; // superseded
 
