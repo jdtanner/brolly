@@ -35,10 +35,13 @@ import GObject from 'gi://GObject';
 import GWeather from 'gi://GWeather';
 
 import * as SearchProvider from './searchProvider.js';
+import {ForecastService} from './forecastService.js';
+import * as Providers from '../shared/providers.js';
 import * as World from '../shared/world.js';
 
 export class WeatherBackgroundService extends Gio.Application {
     private searchProvider: SearchProvider.WeatherSearchProvider;
+    private forecastService: ForecastService;
     private debug: boolean;
 
     public world: GWeather.Location;
@@ -57,6 +60,10 @@ export class WeatherBackgroundService extends Gio.Application {
         GLib.set_application_name(_('Weather'));
 
         this.searchProvider = new SearchProvider.WeatherSearchProvider(this);
+        this.forecastService = new ForecastService(this);
+        // Started on demand (search, calendar menu): accept older cached
+        // data so free-tier API quotas aren't spent on every launch.
+        Providers.setCacheMaxAge(30 * 60);
 
         this.debug = false;
 
@@ -84,6 +91,7 @@ export class WeatherBackgroundService extends Gio.Application {
         super.vfunc_dbus_register(connection, path);
 
         this.searchProvider.export(connection, path);
+        this.forecastService.export(connection, path);
         return true;
     }
 

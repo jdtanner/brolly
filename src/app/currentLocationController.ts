@@ -22,12 +22,14 @@ import Geoclue from 'gi://Geoclue';
 import Gio from 'gi://Gio';
 
 import {WorldModel} from '../shared/world.js';
+import * as Providers from '../shared/providers.js';
 
 export class CurrentLocationController {
     private world: WorldModel;
     private simple?: Geoclue.Simple;
 
     private currentLocation?: GWeather.Location;
+    private lookupSerial = 0;
 
     public constructor(world: WorldModel) {
         this.world = world;
@@ -95,17 +97,29 @@ export class CurrentLocationController {
     }
 
     private onLocationUpdated(simple?: Geoclue.Simple): void {
-        this.currentLocation = undefined;
         const geoclueLocation = simple?.get_location();
-        const world = GWeather.Location.get_world();
-
-        if (geoclueLocation && world) {
-            this.currentLocation = world.find_nearest_city(
-                geoclueLocation.latitude,
-                geoclueLocation.longitude
-            );
+        if (!geoclueLocation) {
+            this.currentLocation = undefined;
+            this.world.currentLocationChanged(undefined);
+            return;
         }
 
-        this.world.currentLocationChanged(this.currentLocation);
+        // libgweather's database only knows larger cities, so snapping to
+        // find_nearest_city() can be miles off (e.g. a village reported as
+        // the nearby city). Use the real position, named via OpenStreetMap.
+        const {latitude, longitude} = geoclueLocation;
+        const serial = ++this.lookupSerial;
+        void Providers.reverseGeocode(latitude, longitude).then(name => {
+            if (serial !== this.lookupSerial) return; // superseded
+
+            // An empty name makes libgweather use the nearest city's name.
+            this.currentLocation = GWeather.Location.new_detached(
+                name ?? '',
+                null,
+                Math.round(latitude * 100) / 100,
+                Math.round(longitude * 100) / 100
+            );
+            this.world.currentLocationChanged(this.currentLocation);
+        });
     }
 }

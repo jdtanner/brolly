@@ -123,11 +123,18 @@ export class WorldModel extends GObject.Object {
     }
 
     public currentLocationChanged(location?: GWeather.Location): void {
-        if (location) {
-            this.currentLocationInfo = this.buildInfo(location);
-            this.addCurrentLocation(this.currentLocationInfo);
-            this.invalidate();
-        }
+        if (!location) return;
+
+        const previous = this.currentLocationInfo;
+        if (previous?.location.equal(location)) return;
+
+        // Drop the old automatic entry unless the user also saved it.
+        if (previous?._isCurrentLocation && previous !== this.selectedLocation)
+            this.removeLocationInternal(previous);
+
+        this.currentLocationInfo = this.buildInfo(location);
+        this.addCurrentLocation(this.currentLocationInfo);
+        this.invalidate();
     }
 
     public getRecent(): GWeatherInfoData | undefined {

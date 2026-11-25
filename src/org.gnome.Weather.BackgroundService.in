@@ -4,9 +4,9 @@ imports.package.init({ name: "@APP_ID@",
                         prefix: "@prefix@",
                         libdir: "@libdir@" });
 
-import('resource:///org/gnome/Weather/js/service/main.js').then(({ main }) => {
+import('resource:///org/gnome/Weather/BackgroundService/js/service/main.js').then(({ main }) => {
     main([imports.system.programInvocationName, ...imports.system.programArgs]);
 }).catch(error => {
     console.error(error);
-    System.exit(1);
+    imports.system.exit(1);
 });

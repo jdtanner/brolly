@@ -28,8 +28,22 @@ hold data fetched by the providers in `src/shared/providers.ts`. To add a
 provider, write a `Fetcher` that returns metric `WeatherSample`s and register
 it in `getProviders()`/`buildInfo()`.
 
-GNOME Shell's own weather (in the calendar menu) still uses libgweather
-directly, so this setting doesn't change it.
+Automatic location uses the real GeoClue position, rounded to about 1 km,
+instead of snapping to the nearest city in libgweather's database (which
+only has larger places). It's named by OpenStreetMap
+[Nominatim](https://nominatim.org/) reverse geocoding, cached for 30 days.
+
+### Calendar-menu (panel) weather
+
+GNOME Shell fetches the calendar-menu weather itself through libgweather.
+The extension in `shell-extension/` makes it use this fork's provider
+instead: it asks the background service's `org.gnome.Weather.Forecast`
+D-Bus interface, which uses the same settings and cache as the app.
+
+```
+cp -r shell-extension/weather-provider-bridge@gnome-weather-fork ~/.local/share/gnome-shell/extensions/
+gnome-extensions enable weather-provider-bridge@gnome-weather-fork   # after logging back in on Wayland
+```
 
 ## Useful links
 

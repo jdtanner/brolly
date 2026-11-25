@@ -182,7 +182,13 @@ export async function setApiKey(
 
 // Both the app and the search-provider service fetch on start-up; a short
 // shared cache keeps us well inside free-tier quotas (Met Office: 360/day).
-const CACHE_MAX_AGE = 5 * 60; // seconds
+// The search/panel service is started on demand (e.g. every time the
+// calendar menu opens), so it accepts older data than the app does.
+let cacheMaxAge = 5 * 60; // seconds
+
+export function setCacheMaxAge(seconds: number): void {
+    cacheMaxAge = seconds;
+}
 
 let session: Soup.Session | undefined;
 function getSession(): Soup.Session {
@@ -224,7 +230,7 @@ function clearCache(): void {
     }
 }
 
-function readCache(key: string): unknown {
+function readCache(key: string, maxAge: number): unknown {
     try {
         const [ok, contents] = GLib.file_get_contents(cachePath(key));
         if (!ok) return undefined;
@@ -232,7 +238,7 @@ function readCache(key: string): unknown {
             time: number;
             data: unknown;
         };
-        if (Date.now() / 1000 - entry.time > CACHE_MAX_AGE) return undefined;
+        if (Date.now() / 1000 - entry.time > maxAge) return undefined;
         return entry.data;
     } catch {
         return undefined;
@@ -254,9 +260,10 @@ function writeCache(key: string, data: unknown): void {
 async function getJson(
     url: string,
     headers: Record<string, string> = {},
-    cacheKey: string = url
+    cacheKey: string = url,
+    maxAge: number = cacheMaxAge
 ): Promise<unknown> {
-    const cached = readCache(cacheKey);
+    const cached = readCache(cacheKey, maxAge);
     if (cached !== undefined) return cached;
 
     const message = Soup.Message.new('GET', url);
@@ -299,8 +306,10 @@ async function getJson(
 function coords(location: GWeather.Location): [number, number] {
     if (!location.has_coords())
         throw new Error(_('This location has no coordinates'));
+    // Round to ~1 km: plenty for a forecast, shares the cache between the
+    // app and the panel, and avoids sending a precise position anywhere.
     const [lat, lon] = location.get_coords();
-    return [lat, lon];
+    return [Math.round(lat * 100) / 100, Math.round(lon * 100) / 100];
 }
 
 /** Approximate solar elevation in degrees (NOAA simplified). */
@@ -351,6 +360,39 @@ function splitCurrent(
             .filter(s => s.time > current.time + 15 * 60)
             .sort((a, b) => a.time - b.time),
     };
+}
+
+/* ---------- Reverse geocoding (OpenStreetMap Nominatim) ---------- */
+
+const GEOCODE_MAX_AGE = 30 * 24 * 3600;
+
+/**
+ * A human name (town/village) for a position, or null. Coordinates are
+ * rounded to ~1 km before being sent; results are cached for 30 days.
+ */
+export async function reverseGeocode(
+    lat: number,
+    lon: number
+): Promise<string | null> {
+    lat = Math.round(lat * 100) / 100;
+    lon = Math.round(lon * 100) / 100;
+    const lang = (GLib.get_language_names()[0] ?? 'en').split(/[_.@]/)[0];
+    const url =
+        'https://nominatim.openstreetmap.org/reverse?format=jsonv2' +
+        `&lat=${lat.toFixed(2)}&lon=${lon.toFixed(2)}&zoom=16&addressdetails=1` +
+        `&accept-language=${encodeURIComponent(lang === 'C' ? 'en' : lang)}`;
+    try {
+        const data = (await getJson(url, {}, url, GEOCODE_MAX_AGE)) as {
+            address?: Record<string, string>;
+        };
+        const a = data.address ?? {};
+        const name =
+            a.town ?? a.village ?? a.hamlet ?? a.suburb ?? a.city ?? null;
+        return name ? name.replace(/ CP$/, '') : null;
+    } catch (e) {
+        console.warn(`Reverse geocoding failed: ${String(e)}`);
+        return null;
+    }
 }
 
 /* ---------- Open-Meteo ---------- */
@@ -435,8 +477,8 @@ function openMeteoFetcher(model: string): Fetcher {
     return async location => {
         const [lat, lon] = coords(location);
         const params = [
-            `latitude=${lat.toFixed(4)}`,
-            `longitude=${lon.toFixed(4)}`,
+            `latitude=${lat.toFixed(2)}`,
+            `longitude=${lon.toFixed(2)}`,
             `current=${OPEN_METEO_VARS}`,
             `hourly=${OPEN_METEO_VARS}`,
             'wind_speed_unit=ms',
@@ -578,8 +620,8 @@ async function metOfficeSeries(
     apiKey: string
 ): Promise<WeatherSample[]> {
     const url =
-        `${MET_OFFICE_BASE}${timesteps}?latitude=${lat.toFixed(4)}` +
-        `&longitude=${lon.toFixed(4)}` +
+        `${MET_OFFICE_BASE}${timesteps}?latitude=${lat.toFixed(2)}` +
+        `&longitude=${lon.toFixed(2)}` +
         '&excludeParameterMetadata=true&includeLocationName=false';
     const data = (await getJson(
         url,
@@ -693,7 +735,7 @@ const owmFetcher: Fetcher = async location => {
     const [lat, lon] = coords(location);
     const url =
         'https://api.openweathermap.org/data/3.0/onecall' +
-        `?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}` +
+        `?lat=${lat.toFixed(2)}&lon=${lon.toFixed(2)}` +
         `&units=metric&exclude=minutely,alerts&appid=${encodeURIComponent(apiKey)}`;
     const data = (await getJson(url)) as {
         current?: OwmEntry;
