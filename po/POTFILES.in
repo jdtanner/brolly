@@ -1,9 +1,9 @@
 # List of source files containing translatable strings.
 # Please keep this file sorted alphabetically.
 data/day-entry.ui
-data/org.gnome.Weather.desktop.in.in
-data/org.gnome.Weather.gschema.xml
-data/org.gnome.Weather.metainfo.xml.in.in
+data/io.github.jdtanner.Brolly.desktop.in.in
+data/io.github.jdtanner.Brolly.gschema.xml
+data/io.github.jdtanner.Brolly.metainfo.xml.in.in
 data/places-popover.ui
 data/weather-widget.ui
 data/window.ui

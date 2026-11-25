@@ -13,5 +13,5 @@ if not os.path.exists(bindir):
     os.makedirs(bindir)
 
 src = os.path.join(pkgdatadir, app_id)
-dest = os.path.join(bindir, 'gnome-weather')
+dest = os.path.join(bindir, 'brolly')
 subprocess.call(['ln', '-s', '-f', src, dest])

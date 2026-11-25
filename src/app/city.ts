@@ -63,7 +63,8 @@ export class WeatherWidget extends Adw.Bin {
     static {
         GObject.registerClass(
             {
-                Template: 'resource:///org/gnome/Weather/weather-widget.ui',
+                Template:
+                    'resource:///io/github/jdtanner/Brolly/weather-widget.ui',
                 InternalChildren: [
                     'conditionsImage',
                     'placesButton',
@@ -368,7 +369,7 @@ export class WeatherView extends Adw.Bin {
     static {
         GObject.registerClass(
             {
-                Template: 'resource:///org/gnome/Weather/city.ui',
+                Template: 'resource:///io/github/jdtanner/Brolly/city.ui',
                 InternalChildren: ['stack'],
             },
             this

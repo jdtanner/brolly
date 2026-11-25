@@ -1,7 +1,0 @@
-{
-    "uuid": "weather-provider-bridge@gnome-weather-fork",
-    "name": "Weather Provider Bridge",
-    "description": "Makes the weather in the calendar menu use the provider chosen in the forked GNOME Weather app (Open-Meteo, Met Office, OpenWeatherMap or libgweather) instead of GNOME Shell's built-in libgweather backends.",
-    "shell-version": ["50", "51"],
-    "url": "https://github.com/jdtanner/gnome-weather"
-}

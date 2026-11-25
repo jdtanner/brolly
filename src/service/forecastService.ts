@@ -14,7 +14,7 @@
 // with Gnome Weather; if not, write to the Free Software Foundation,
 // Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-// org.gnome.Weather.Forecast: lets other components (the companion GNOME
+// io.github.jdtanner.Brolly.Forecast: lets other components (the companion GNOME
 // Shell extension in shell-extension/) get a forecast from whichever
 // provider the user picked in Weather, instead of libgweather's defaults.
 
@@ -28,7 +28,7 @@ import {WeatherInfo} from '../shared/weatherInfo.js';
 
 const ForecastInterface = `
 <node>
-  <interface name="org.gnome.Weather.Forecast">
+  <interface name="io.github.jdtanner.Brolly.Forecast">
     <!-- Returns JSON: {valid, error, name, attribution, source,
          current: {time, tempC, icon}, forecast: [{time, tempC, icon}]}.
          An empty name means "name it from the coordinates". -->
@@ -37,6 +37,12 @@ const ForecastInterface = `
       <arg type="d" name="longitude" direction="in"/>
       <arg type="s" name="name" direction="in"/>
       <arg type="s" name="json" direction="out"/>
+    </method>
+    <!-- The places for GNOME Shell's calendar-menu weather, as GNOME
+         Weather's org.gnome.Shell.WeatherIntegration would provide them. -->
+    <method name="GetLocations">
+      <arg type="b" name="automatic" direction="out"/>
+      <arg type="av" name="locations" direction="out"/>
     </method>
   </interface>
 </node>`;
@@ -59,7 +65,7 @@ export class ForecastService {
 
     public constructor(application: Gio.Application) {
         this.application = application;
-        this.settings = Util.getSettings('org.gnome.Weather');
+        this.settings = Util.getSettings('io.github.jdtanner.Brolly');
         this.impl = Gio.DBusExportedObject.wrapJSObject(
             ForecastInterface,
             this
@@ -72,6 +78,14 @@ export class ForecastService {
 
     public unexport(connection: Gio.DBusConnection): void {
         this.impl.unexport_from_connection(connection);
+    }
+
+    public GetLocations(): GLib.Variant {
+        // Brolly follows the system's location services, like GNOME Weather.
+        return new GLib.Variant('(bav)', [
+            true,
+            this.settings.get_value('locations').deep_unpack<GLib.Variant[]>(),
+        ]);
     }
 
     public GetForecastAsync(
@@ -87,7 +101,7 @@ export class ForecastService {
             )
             .catch((e: unknown) =>
                 invocation.return_dbus_error(
-                    'org.gnome.Weather.Error.Failed',
+                    'io.github.jdtanner.Brolly.Error.Failed',
                     String(e)
                 )
             )

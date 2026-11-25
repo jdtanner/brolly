@@ -1,5 +1,5 @@
-project('gnome-weather', 'c',
-  version: '50.0',
+project('brolly', 'c',
+  version: '0.1.0',
   meson_version: '>= 0.59.0',
   license: 'GPL-2.0-or-later'
 )
@@ -34,7 +34,7 @@ else
   version_suffix = ''
 endif
 
-default_id = 'org.gnome.Weather'
+default_id = 'io.github.jdtanner.Brolly'
 weather_id = default_id + profile
 
 weather_prefix = get_option('prefix')

@@ -555,9 +555,10 @@ export function describeForecastSource(
     locationName: string
 ): string | null {
     if (!source?.name) return null;
-    const same =
-        source.name.toLowerCase().startsWith(locationName.toLowerCase()) &&
-        (source.distanceM ?? 0) < 500;
+    // Same name (e.g. "Ilkeston" vs "Ilkeston (Derbyshire)"): same place.
+    const same = source.name
+        .toLowerCase()
+        .startsWith(locationName.toLowerCase());
     if (same) return null;
     if (source.distanceM === undefined)
         return _('Forecast for %s').format(source.name);

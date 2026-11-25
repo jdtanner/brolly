@@ -48,7 +48,7 @@ export class MainWindow extends Adw.ApplicationWindow {
     static {
         GObject.registerClass(
             {
-                Template: 'resource:///org/gnome/Weather/window.ui',
+                Template: 'resource:///io/github/jdtanner/Brolly/window.ui',
                 InternalChildren: [
                     'header',
                     'refreshRevealer',
@@ -123,7 +123,7 @@ export class MainWindow extends Adw.ApplicationWindow {
             ctx.add_class('devel');
         }
 
-        this.settings = Util.getSettings('org.gnome.Weather');
+        this.settings = Util.getSettings('io.github.jdtanner.Brolly');
         this.restoreWindowGeometry();
         this.connect('close-request', () => this.saveWindowGeometry());
     }
@@ -187,26 +187,36 @@ export class MainWindow extends Adw.ApplicationWindow {
             'Jim Pennucci',
         ];
 
-        const copyright = 'Copyright 2013-2015 The Weather Developers';
+        const copyright =
+            'Copyright 2013-2015 The Weather Developers\nCopyright 2026 The Brolly Contributors';
         const attribution = this.cityView.info?.get_attribution();
 
         const aboutDialog = new Adw.AboutDialog({
-            developers: ['Giovanni Campagna <gcampagna@src.gnome.org>'],
+            developers: [
+                'jdtanner https://github.com/jdtanner',
+                'Giovanni Campagna <gcampagna@src.gnome.org> (GNOME Weather)',
+            ],
             designers: designers,
             translator_credits: _('translator-credits'),
-            application_name: _('Weather'),
+            application_name: 'Brolly',
             application_icon: pkg.name,
-            developer_name: _('The GNOME Project'),
+            developer_name: 'jdtanner',
             copyright: copyright,
             license_type: Gtk.License.GPL_2_0,
             version: pkg.version,
-            website: 'https://apps.gnome.org/Weather/',
-            issue_url: 'https://gitlab.gnome.org/GNOME/gnome-weather/-/issues/',
+            website: 'https://github.com/jdtanner/brolly',
+            issue_url: 'https://github.com/jdtanner/brolly/issues',
+            comments: _(
+                'Brolly is a fork of GNOME Weather by The GNOME Project. It is not affiliated with or endorsed by GNOME.'
+            ),
         });
+        aboutDialog.add_acknowledgement_section(_('Based on'), [
+            'GNOME Weather https://apps.gnome.org/Weather/',
+        ]);
 
         if (attribution) {
             aboutDialog.add_legal_section(
-                _('Weather'),
+                _('Weather data'),
                 null,
                 Gtk.License.CUSTOM,
                 attribution

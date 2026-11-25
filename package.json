@@ -1,10 +1,10 @@
 {
   "private": true,
-  "name": "gnome-weather",
-  "version": "48.0",
+  "name": "brolly",
+  "version": "0.1.0",
   "type": "module",
-  "main": "src/app/main.js",
-  "repository": "https://gitlab.gnome.org/GNOME/gnome-weather.git",
+  "main": "src/app/main.ts",
+  "repository": "https://github.com/jdtanner/brolly.git",
   "contributors": [
     "Christopher Davis <christopherdavis@gnome.org>",
     "Vitaly Dyachkov <obyknovenius@me.com>",

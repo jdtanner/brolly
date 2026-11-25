@@ -1,0 +1,7 @@
+{
+    "uuid": "brolly-panel@jdtanner.github.io",
+    "name": "Brolly Panel Weather",
+    "description": "Shows the weather from Brolly in the calendar menu, using the provider you chose in Brolly (Open-Meteo, Met Office, OpenWeatherMap or libgweather) and its saved places. Requires the Brolly app.",
+    "shell-version": ["50", "51"],
+    "url": "https://github.com/jdtanner/brolly"
+}

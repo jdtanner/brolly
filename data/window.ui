@@ -22,7 +22,7 @@
       </item>
       <item>
         <attribute name="action">win.about</attribute>
-        <attribute name="label" translatable="yes">_About Weather</attribute>
+        <attribute name="label" translatable="yes">_About Brolly</attribute>
       </item>
     </section>
   </menu>
@@ -48,7 +48,7 @@
             </child>
             <property name="content">
               <object class="AdwStatusPage" id="searchViewStatus">
-                <property name="title" translatable="yes">Welcome to Weather!</property>
+                <property name="title" translatable="yes">Welcome to Brolly!</property>
                 <property name="description" translatable="yes">To get started, select a location.</property>
                 <child>
                   <object class="GtkMenuButton" id="searchButton">
@@ -83,7 +83,7 @@
                 </child>
                 <child type="title">
                   <object class="AdwViewSwitcherTitle" id="forecastStackSwitcher">
-                    <property name="title" translatable="yes">Weather</property>
+                    <property name="title">Brolly</property>
                   </object>
                 </child>
                 <child type="end">

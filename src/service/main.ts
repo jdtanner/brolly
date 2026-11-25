@@ -57,7 +57,7 @@ export class WeatherBackgroundService extends Gio.Application {
             flags: Gio.ApplicationFlags.IS_SERVICE,
             inactivity_timeout: 60000,
         });
-        GLib.set_application_name(_('Weather'));
+        GLib.set_application_name('Brolly');
 
         this.searchProvider = new SearchProvider.WeatherSearchProvider(this);
         this.forecastService = new ForecastService(this);

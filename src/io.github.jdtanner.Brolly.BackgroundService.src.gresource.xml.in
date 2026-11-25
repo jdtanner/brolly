@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
-  <gresource prefix="/org/gnome/Weather/BackgroundService/js">
+  <gresource prefix="/io/github/jdtanner/Brolly/BackgroundService/js">
     <file>service/main.js</file>
     <file>service/searchProvider.js</file>
     <file>service/forecastService.js</file>
@@ -8,5 +8,6 @@
     <file>shared/world.js</file>
     <file>shared/weatherInfo.js</file>
     <file>shared/providers.js</file>
+    <file>shared/migration.js</file>
   </gresource>
 </gresources>

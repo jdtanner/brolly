@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9a9996"/>
+      <stop offset="1" stop-color="#5e5c64"/>
+    </linearGradient>
+    <linearGradient id="canopy" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#f6d32d"/>
+      <stop offset="1" stop-color="#f5c211"/>
+    </linearGradient>
+  </defs>
+  <!-- base with a slightly darker bottom edge, GNOME style -->
+  <rect x="8" y="12" width="112" height="108" rx="24" fill="#3d3846"/>
+  <rect x="8" y="8" width="112" height="108" rx="24" fill="url(#sky)"/>
+  <!-- raindrops -->
+  <g fill="#ffffff" opacity="0.85">
+    <path d="M26 28c0 0 -5 7 -5 10a5 5 0 0 0 10 0c0-3 -5-10 -5-10z"/>
+    <path d="M100 22c0 0 -4 6 -4 8.5a4 4 0 0 0 8 0c0-2.5 -4-8.5 -4-8.5z"/>
+    <path d="M104 62c0 0 -4 6 -4 8.5a4 4 0 0 0 8 0c0-2.5 -4-8.5 -4-8.5z"/>
+    <path d="M22 70c0 0 -4 6 -4 8.5a4 4 0 0 0 8 0c0-2.5 -4-8.5 -4-8.5z"/>
+  </g>
+  <!-- canopy: dome with a scalloped hem -->
+  <path d="M20 66
+           C20 40 40 24 64 24
+           C88 24 108 40 108 66
+           C102 60 92 60 86 66
+           C80 60 70 60 64 66
+           C58 60 48 60 42 66
+           C36 60 26 60 20 66 Z" fill="url(#canopy)"/>
+  <!-- panel lines -->
+  <path d="M64 24 C54 36 46 50 42 66 M64 24 C74 36 82 50 86 66 M64 24 V66"
+        fill="none" stroke="#e5a50a" stroke-width="3" stroke-linecap="round"/>
+  <!-- ferrule -->
+  <rect x="62" y="17" width="4" height="9" rx="2" fill="#3d3846"/>
+  <!-- shaft and crook handle -->
+  <path d="M64 64 V96 a8 8 0 0 1 -16 0" fill="none" stroke="#3d3846"
+        stroke-width="6" stroke-linecap="round"/>
+</svg>

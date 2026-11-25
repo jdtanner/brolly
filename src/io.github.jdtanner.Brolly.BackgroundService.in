@@ -4,7 +4,7 @@ imports.package.init({ name: "@APP_ID@",
                         prefix: "@prefix@",
                         libdir: "@libdir@" });
 
-import('resource:///org/gnome/Weather/BackgroundService/js/service/main.js').then(({ main }) => {
+import('resource:///io/github/jdtanner/Brolly/BackgroundService/js/service/main.js').then(({ main }) => {
     main([imports.system.programInvocationName, ...imports.system.programArgs]);
 }).catch(error => {
     console.error(error);

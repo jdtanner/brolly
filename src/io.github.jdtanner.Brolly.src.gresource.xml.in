@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
-  <gresource prefix="/org/gnome/Weather/js">
+  <gresource prefix="/io/github/jdtanner/Brolly/js">
     <file>app/application.js</file>
     <file>app/city.js</file>
     <file>app/currentLocationController.js</file>
@@ -19,5 +19,6 @@
     <file>shared/world.js</file>
     <file>shared/weatherInfo.js</file>
     <file>shared/providers.js</file>
+    <file>shared/migration.js</file>
   </gresource>
 </gresources>

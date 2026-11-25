@@ -119,7 +119,7 @@ const SECRET_SCHEMA = (
         flags: Secret.SchemaFlags,
         attributes: Record<string, Secret.SchemaAttributeType>
     ) => Secret.Schema
-)('org.gnome.Weather.ApiKey', Secret.SchemaFlags.NONE, {
+)('io.github.jdtanner.Brolly.ApiKey', Secret.SchemaFlags.NONE, {
     provider: Secret.SchemaAttributeType.STRING,
 });
 
@@ -169,7 +169,7 @@ export async function setApiKey(
             SECRET_SCHEMA,
             {provider},
             Secret.COLLECTION_DEFAULT,
-            `GNOME Weather API key (${provider})`,
+            `Brolly API key (${provider})`,
             key,
             null
         );
@@ -195,7 +195,7 @@ let session: Soup.Session | undefined;
 function getSession(): Soup.Session {
     if (!session) {
         session = new Soup.Session({
-            user_agent: `gnome-weather/${pkg.version ?? 'unknown'} (provider fork)`,
+            user_agent: `Brolly/${pkg.version ?? 'unknown'} (+https://github.com/jdtanner/brolly)`,
             timeout: 30,
         });
     }
@@ -203,7 +203,7 @@ function getSession(): Soup.Session {
 }
 
 function cacheDir(): string {
-    return GLib.build_filenamev([GLib.get_user_cache_dir(), 'gnome-weather']);
+    return GLib.build_filenamev([GLib.get_user_cache_dir(), 'brolly']);
 }
 
 function cachePath(key: string): string {
@@ -918,8 +918,7 @@ export function buildInfo(
             return new GWeatherInfoAdapter(
                 new GWeather.Info({
                     application_id: pkg.name,
-                    contact_info:
-                        'https://gitlab.gnome.org/GNOME/gnome-weather/-/raw/master/gnome-weather.doap',
+                    contact_info: 'https://github.com/jdtanner/brolly',
                     location,
                     enabled_providers: getLibgweatherProviderFlags(settings),
                 })

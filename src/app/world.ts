@@ -73,7 +73,9 @@ export class WorldContentView extends Gtk.Popover {
 
         this.update_property([Gtk.AccessibleProperty.LABEL], [_('World view')]);
         const builder = new Gtk.Builder();
-        builder.add_from_resource('/org/gnome/Weather/places-popover.ui');
+        builder.add_from_resource(
+            '/io/github/jdtanner/Brolly/places-popover.ui'
+        );
 
         const box: Gtk.Box = builder.get_object('popoverBox');
         this.set_child(box);

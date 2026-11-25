@@ -1,0 +1,93 @@
+name: Build and release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  flatpak:
+    name: Flatpak
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-51
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: Brolly.flatpak
+          manifest-path: io.github.jdtanner.Brolly.json
+          cache-key: flatpak-builder-${{ github.sha }}
+
+  extras:
+    name: Extension zip and source tarball
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Version
+        id: v
+        run: |
+          VERSION=$(grep -oP "version: '\K[^']+" meson.build | head -1)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Extension zip
+        run: |
+          cd shell-extension/brolly-panel@jdtanner.github.io
+          zip -9 ../../brolly-panel@jdtanner.github.io.zip metadata.json extension.js
+      - name: Source tarball (including the gi-types submodule)
+        run: |
+          P=brolly-${{ steps.v.outputs.version }}
+          git archive --format=tar --prefix=$P/ HEAD > $P.tar
+          (cd gi-types && git archive --format=tar --prefix=$P/gi-types/ HEAD) > sub.tar
+          tar --concatenate --file=$P.tar sub.tar
+          xz -9 $P.tar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extras
+          path: |
+            brolly-panel@jdtanner.github.io.zip
+            brolly-*.tar.xz
+
+  release:
+    name: GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [flatpak, extras]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=${GITHUB_REF_NAME}
+          VERSION=${TAG#v}
+          BUNDLE=$(find artifacts -name '*.flatpak' | head -1)
+          test -n "$BUNDLE"
+          mv "$BUNDLE" "Brolly-$VERSION.flatpak"
+          NOTES=$(python3 - "$VERSION" <<'PY'
+          import re, sys
+          v = sys.argv[1]
+          s = open('data/io.github.jdtanner.Brolly.metainfo.xml.in.in').read()
+          m = re.search(r'<release version="%s".*?<description>(.*?)</description>' % re.escape(v), s, re.S)
+          body = m.group(1) if m else ''
+          body = re.sub(r'<li>(.*?)</li>', r'- \1', body)
+          body = re.sub(r'<[^>]+>', '', body)
+          print('\n'.join(l.strip() for l in body.splitlines() if l.strip()))
+          PY
+          )
+          gh release create "$TAG" --title "Brolly $VERSION" --notes "$NOTES" \
+            "Brolly-$VERSION.flatpak" \
+            $(find artifacts -name 'brolly-panel@*.zip') \
+            $(find artifacts -name 'brolly-*.tar.xz')

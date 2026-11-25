@@ -12,7 +12,7 @@ install_data (
 
 symbolic_icondir = join_paths('hicolor', 'symbolic', 'apps')
 install_data (
-  join_paths(symbolic_icondir, 'org.gnome.Weather-symbolic.svg'),
+  join_paths(symbolic_icondir, 'io.github.jdtanner.Brolly-symbolic.svg'),
   install_dir: join_paths(weather_datadir, 'icons', symbolic_icondir),
   rename: '@0@-symbolic.svg'.format(weather_id)
 )

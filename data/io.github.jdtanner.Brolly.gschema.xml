@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<schemalist gettext-domain="org.gnome.Weather">
-  <schema id="org.gnome.Weather" path="/org/gnome/Weather/">
+<schemalist gettext-domain="io.github.jdtanner.Brolly">
+  <schema id="io.github.jdtanner.Brolly" path="/io/github/jdtanner/Brolly/">
     <key name="locations" type="av">
       <default>[]</default>
       <summary>Configured cities to show weather for</summary>
       <description>
-        The locations shown in the world view of gnome-weather. Each value is a
+        The locations shown in the world view of Brolly. Each value is a
         GVariant returned by gweather_location_serialize().
       </description>
     </key>
@@ -43,6 +43,14 @@
       <description>
         Backends libgweather may use when provider is "libgweather". Any of
         "metar", "met-no", "owm" and "nws".
+      </description>
+    </key>
+    <key name="migrated-from-gnome-weather" type="b">
+      <default>false</default>
+      <summary>Settings imported</summary>
+      <description>
+        Whether saved places and preferences were imported from GNOME Weather
+        (org.gnome.Weather) on first run.
       </description>
     </key>
     <key name="open-meteo-model" type="s">

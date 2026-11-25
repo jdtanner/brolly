@@ -249,7 +249,7 @@ export class DayEntry extends Adw.Bin {
     static {
         GObject.registerClass(
             {
-                Template: 'resource:///org/gnome/Weather/day-entry.ui',
+                Template: 'resource:///io/github/jdtanner/Brolly/day-entry.ui',
                 InternalChildren: [
                     'nameLabel',
                     'dateLabel',

@@ -46,11 +46,11 @@ export class WeatherApplication extends Adw.Application {
     public constructor() {
         super({
             applicationId: pkg.name,
-            resourceBasePath: '/org/gnome/Weather',
+            resourceBasePath: '/io/github/jdtanner/Brolly',
         });
         const name_prefix = '';
 
-        GLib.set_application_name(name_prefix + _('Weather'));
+        GLib.set_application_name(name_prefix + 'Brolly');
         Gtk.Window.set_default_icon_name(pkg.name);
 
         const world = GWeather.Location.get_world();

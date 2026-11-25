@@ -35,7 +35,9 @@ export class ShellIntegration {
             this
         );
 
-        this.settings = new Gio.Settings({schema_id: 'org.gnome.Weather'});
+        this.settings = new Gio.Settings({
+            schema_id: 'io.github.jdtanner.Brolly',
+        });
 
         this.settings.connect('changed::locations', () => {
             this.impl.emit_property_changed(

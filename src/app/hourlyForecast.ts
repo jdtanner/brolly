@@ -314,7 +314,7 @@ export class HourEntry extends Adw.Bin {
     static {
         GObject.registerClass(
             {
-                Template: 'resource:///org/gnome/Weather/hour-entry.ui',
+                Template: 'resource:///io/github/jdtanner/Brolly/hour-entry.ui',
                 InternalChildren: [
                     'timeLabel',
                     'image',

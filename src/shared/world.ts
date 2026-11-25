@@ -23,6 +23,7 @@ import GWeather from 'gi://GWeather';
 
 import * as Util from '../misc/util.js';
 import * as Providers from './providers.js';
+import * as Migration from './migration.js';
 import {WeatherInfo} from './weatherInfo.js';
 
 type GWeatherInfoData = WeatherInfo;
@@ -65,7 +66,12 @@ export class WorldModel extends GObject.Object {
 
         this.world = world;
 
-        this.settings = Util.getSettings('org.gnome.Weather');
+        this.settings = Util.getSettings('io.github.jdtanner.Brolly');
+        // First run: import places and preferences from GNOME Weather (and
+        // this fork's pre-rename build), then any API keys.
+        if (Migration.migrateSettings(this.settings)) {
+            void Migration.migrateApiKeys().then(() => this.rebuildInfos());
+        }
         for (const key of [
             'provider',
             'libgweather-providers',

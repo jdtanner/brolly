@@ -42,7 +42,7 @@ export class PreferencesDialog extends Adw.PreferencesDialog {
             this.handlerIds = [];
         });
 
-        this.settings = Util.getSettings('org.gnome.Weather');
+        this.settings = Util.getSettings('io.github.jdtanner.Brolly');
 
         const page = new Adw.PreferencesPage({
             title: _('Weather Provider'),

@@ -14,7 +14,7 @@ from dogtail.procedural import *
 import os, sys
 import subprocess
 
-APPLICATION_ID = "org.gnome.Weather"
+APPLICATION_ID = "io.github.jdtanner.Brolly"
 
 _bus = None
 
@@ -75,7 +75,7 @@ def reset_settings():
 def init():
     global settings, _previous_locations, _automatic_location
 
-    settings = Gio.Settings("org.gnome.Weather")
+    settings = Gio.Settings("io.github.jdtanner.Brolly")
     _previous_locations = settings.get_value("locations")
     reset_settings()
 

@@ -243,7 +243,7 @@ export class WeatherSearchProvider {
 
         Gio.DBus.session.call(
             pkg.name ?? null,
-            '/org/gnome/Weather' + profile,
+            '/io/github/jdtanner/Brolly' + profile,
             'org.freedesktop.Application',
             'ActivateAction',
             new GLib.Variant('(sava{sv})', [

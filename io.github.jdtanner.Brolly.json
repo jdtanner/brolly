@@ -1,0 +1,101 @@
+{
+    "id": "io.github.jdtanner.Brolly",
+    "runtime": "org.gnome.Platform",
+    "runtime-version": "51",
+    "sdk": "org.gnome.Sdk",
+    "sdk-extensions": [
+        "org.freedesktop.Sdk.Extension.node24",
+        "org.freedesktop.Sdk.Extension.typescript"
+    ],
+    "command": "brolly",
+    "finish-args": [
+        "--share=ipc",
+        "--share=network",
+        "--socket=fallback-x11",
+        "--socket=wayland",
+        "--device=dri",
+        "--metadata=X-DConf=migrate-path=/io/github/jdtanner/Brolly/"
+    ],
+    "cleanup": [
+        "/include",
+        "/lib/pkgconfig",
+        "/share/pkgconfig",
+        "/share/aclocal",
+        "/man",
+        "/share/man",
+        "/share/gtk-doc",
+        "/share/vala",
+        "*.la",
+        "*.a"
+    ],
+    "build-options": {
+        "append-path": "/usr/lib/sdk/node24/bin:/usr/lib/sdk/typescript/bin"
+    },
+    "modules": [
+        {
+            "name": "geocode-glib",
+            "buildsystem": "meson",
+            "config-opts": [
+                "-Denable-installed-tests=false",
+                "-Denable-gtk-doc=false",
+                "-Dsoup2=false"
+            ],
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "https://gitlab.gnome.org/GNOME/geocode-glib.git",
+                    "tag": "3.26.4",
+                    "commit": "210abe69d68e38947106f4680631c369b0c23189"
+                }
+            ]
+        },
+        {
+            "name": "libgweather",
+            "buildsystem": "meson",
+            "config-opts": [
+                "-Denable_vala=false",
+                "-Dtests=false",
+                "-Dgtk_doc=false"
+            ],
+            "modules": [
+                {
+                    "name": "gweather-locations",
+                    "buildsystem": "meson",
+                    "sources": [
+                        {
+                            "type": "git",
+                            "url": "https://gitlab.gnome.org/GNOME/gweather-locations.git",
+                            "tag": "2026.2",
+                            "commit": "995f613e485318cde51f5be28f2e88f90aed5e94"
+                        }
+                    ]
+                }
+            ],
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "https://gitlab.gnome.org/GNOME/libgweather.git",
+                    "tag": "4.6.0",
+                    "commit": "97b609e8bf28c7a423a2c69fac92e2aeac461cbf"
+                }
+            ]
+        },
+        {
+            "name": "brolly",
+            "buildsystem": "meson",
+            "sources": [
+                {
+                    "type": "dir",
+                    "path": ".",
+                    "skip": [
+                        "_build",
+                        "node_modules",
+                        ".flatpak-builder",
+                        "flatpak-build",
+                        "repo"
+                    ]
+                }
+            ]
+        }
+    ]
+}

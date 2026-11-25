@@ -1,96 +1,129 @@
-# Weather
+<img src="data/icons/hicolor/scalable/apps/io.github.jdtanner.Brolly.svg" width="96" align="left" alt="">
 
-Monitor the current weather conditions for your city, or anywhere in the world.
+# Brolly
 
-## About this fork: alternative weather providers
+Weather forecasts for GNOME, from the provider you choose.
 
-This fork lets you choose where weather data comes from
-(**Menu → Preferences**, or <kbd>Ctrl</kbd>+<kbd>,</kbd>):
+<br clear="left">
 
-| Provider | API key | Notes |
-| --- | --- | --- |
-| libgweather (default) | no | Upstream behaviour. Each backend (METAR, MET Norway, OpenWeatherMap, NWS) can be switched on or off. |
-| [Open-Meteo](https://open-meteo.com/) | no | Hourly data for 8 days. You can pick the weather model (ECMWF, UK Met Office, DWD ICON, …). |
-| [Met Office DataHub](https://datahub.metoffice.gov.uk/) | yes (free tier) | Site-specific forecasts: hourly for 48 h, then three-hourly up to 7 days. |
-| [OpenWeatherMap One Call 3.0](https://openweathermap.org/api/one-call-3) | yes | Hourly for 48 h, then built from daily data. |
+Brolly is a fork of [GNOME Weather](https://apps.gnome.org/Weather/). It keeps
+the familiar app and lets you pick where your forecasts come from. It also
+uses your real town or village for your location, not just the nearest big
+city.
 
-API keys are kept in the login keyring (libsecret), not in dconf. Responses
-are cached for 5 minutes in `~/.cache/gnome-weather/`, and the app and the
-search provider share that cache, so free-tier quotas last.
+![Hourly forecast](data/screenshots/hourly.png)
 
-Settings: `org.gnome.Weather` `provider`, `libgweather-providers` and
-`open-meteo-model`.
+## Features
 
-How it works: the UI now talks to `WeatherInfo` (`src/shared/weatherInfo.ts`)
-instead of `GWeather.Info`. `WeatherInfo` keeps the GWeather.Info methods the
-app uses. `GWeatherInfoAdapter` wraps libgweather, and `RemoteInfo`/`DataInfo`
-hold data fetched by the providers in `src/shared/providers.ts`. To add a
+- **Choose a weather provider** (Menu → Preferences, or <kbd>Ctrl</kbd>+<kbd>,</kbd>):
+
+  | Provider | API key | Notes |
+  | --- | --- | --- |
+  | [Open-Meteo](https://open-meteo.com/) | no | Hourly data for 8 days. You can pick the weather model (ECMWF, UK Met Office, DWD ICON, …). |
+  | [Met Office DataHub](https://datahub.metoffice.gov.uk/) | yes (free tier) | Subscribe to **Global spot**, free plan (360 calls/day). Hourly for 48 h, then three-hourly to 7 days. |
+  | [OpenWeatherMap One Call 3.0](https://openweathermap.org/api/one-call-3) | yes | Hourly for 48 h, then built from daily data. |
+  | libgweather | no | What GNOME Weather uses. Each backend (METAR, MET Norway, OpenWeatherMap, NWS) can be switched on or off. |
+
+- **Your real location.** The automatic location uses GeoClue's position
+  (rounded to about 1 km) and is named from OpenStreetMap, so you see your
+  town or village. When GeoClue only has a rough position, Brolly falls back
+  to the nearest big city.
+- **Search any town or village**, not only the cities in libgweather's
+  database.
+- **Shows where the forecast comes from.** When a provider forecasts for a
+  nearby site, Brolly says so, for example "Forecast for Heanor, 1.4 km away".
+- **API keys are kept in your keyring**, not in plain settings.
+- **Panel weather.** The optional [Brolly Panel Weather](shell-extension/)
+  GNOME Shell extension makes the weather in the calendar menu use Brolly's
+  provider and places.
+- **Imports GNOME Weather's saved places** on first run, when GNOME Weather's
+  settings are present (not inside the Flatpak sandbox).
+
+<p>
+  <img src="data/screenshots/daily.png" width="49%" alt="Daily forecast">
+  <img src="data/screenshots/preferences.png" width="49%" alt="Choosing a provider">
+</p>
+
+## Install
+
+### Flatpak
+
+Download `Brolly-<version>.flatpak` from the
+[latest release](https://github.com/jdtanner/brolly/releases/latest), then:
+
+```
+flatpak install --user Brolly-0.1.0.flatpak
+```
+
+The app needs the GNOME 51 runtime from Flathub. If that isn't installed,
+Flatpak offers to install it.
+
+### Panel extension
+
+Download `brolly-panel@jdtanner.github.io.zip` from the same release, then:
+
+```
+gnome-extensions install brolly-panel@jdtanner.github.io.zip
+```
+
+Log out and back in (needed on Wayland), then run
+`gnome-extensions enable brolly-panel@jdtanner.github.io`.
+
+### From source
+
+You need Meson, the GTK 4, libadwaita, GJS (≥ 1.89.1), libgweather 4,
+GeoClue, libsoup 3 and libsecret development packages, and TypeScript.
+
+```
+git clone --recurse-submodules https://github.com/jdtanner/brolly.git
+cd brolly
+npm ci                                   # provides tsc
+export PATH="$PWD/node_modules/.bin:$PATH"
+meson setup _build --prefix=/usr/local
+meson compile -C _build && meson compile -C _build   # twice: see below
+sudo meson install -C _build
+```
+
+The build compiles the TypeScript and then bundles it. On the first
+`meson compile` after a change, the bundle may still hold the previous build
+(an upstream build quirk), so run it twice.
+
+To build the Flatpak yourself:
+
+```
+flatpak-builder --user --install --force-clean _flatpak io.github.jdtanner.Brolly.json
+```
+
+## Privacy
+
+- Weather providers receive only coordinates, rounded to about 1 km.
+- OpenStreetMap Nominatim receives the same rounded coordinates for your
+  automatic location, to look up its name. Results are cached for 30 days.
+- Place search sends only the text you type, to Open-Meteo's geocoding API.
+- Responses are cached in `~/.cache/brolly`.
+
+## How it works
+
+The UI talks to `WeatherInfo` (`src/shared/weatherInfo.ts`) instead of
+`GWeather.Info`. `WeatherInfo` keeps the GWeather.Info methods the app uses.
+`GWeatherInfoAdapter` wraps libgweather, and `RemoteInfo`/`DataInfo` hold
+data fetched by the providers in `src/shared/providers.ts`. To add a
 provider, write a `Fetcher` that returns metric `WeatherSample`s and register
-it in `getProviders()`/`buildInfo()`.
+it in `getProviders()` and `buildInfo()`.
 
-Automatic location uses the real GeoClue position, rounded to about 1 km,
-instead of snapping to the nearest city in libgweather's database (which
-only has larger places). It's named by OpenStreetMap
-[Nominatim](https://nominatim.org/) reverse geocoding, cached for 30 days.
+The background service (`io.github.jdtanner.Brolly.BackgroundService`)
+provides Activities search results and the
+`io.github.jdtanner.Brolly.Forecast` D-Bus interface that the panel
+extension uses.
 
-### Calendar-menu (panel) weather
+## Credits and licence
 
-GNOME Shell fetches the calendar-menu weather itself through libgweather.
-The extension in `shell-extension/` makes it use this fork's provider
-instead: it asks the background service's `org.gnome.Weather.Forecast`
-D-Bus interface, which uses the same settings and cache as the app.
+Brolly is based on GNOME Weather by Giovanni Campagna, Christopher Davis and
+the GNOME contributors, and keeps its translations. Brolly is not affiliated
+with or endorsed by the GNOME Foundation.
 
-```
-cp -r shell-extension/weather-provider-bridge@gnome-weather-fork ~/.local/share/gnome-shell/extensions/
-gnome-extensions enable weather-provider-bridge@gnome-weather-fork   # after logging back in on Wayland
-```
+Licensed under the GNU General Public License, version 2 or later. See
+[COPYING.md](COPYING.md).
 
-## Useful links
-
-**Homepage**: https://apps.gnome.org/Weather/
-
-**Report issues**: https://gitlab.gnome.org/GNOME/gnome-weather/issues/
-
-**Donate**: https://www.gnome.org/donate/
-
-**Translate**: https://l10n.gnome.org/module/gnome-weather/
-
-## Installation
-
-There are two supported ways to install Weather:
-
-### Stable Release
-
-The latest stable release is available on Flathub:
-
-<a href='https://flathub.org/apps/details/org.gnome.Weather'><img width='240' alt='Download on Flathub' src='https://flathub.org/api/badge?svg&locale=en'/></a>
-
-### Development Snapshot
-
-This is for testing only. To start, add the GNOME nightly repository:
-
-```
-$ flatpak remote-add gnome-nightly https://nightly.gnome.org/gnome-nightly.flatpakrepo
-```
-
-Then, run the following command to install the development version of Weather:
-
-```
-$ flatpak install org.gnome.WeatherDevel
-```
-
-## Hacking on Weather
-
-To start working on Weather see the [general guide](https://welcome.gnome.org/app/Weather/#getting-the-app-to-build) for building GNOME apps
-with Flatpak and GNOME Builder. Then, [find a task](https://gitlab.gnome.org/GNOME/gnome-weather/issues?label_name%5B%5D=4.+Newcomers) to work on.
-
-If you're unfamiliar with GJS, here are a few good places to start:
-
-* The [beginner-level guide](https://gjs-guide.gitlab.io/) for working with GJS
-* An overview of [working with GNOME APIs via GJS](https://gitlab.gnome.org/GNOME/gjs/wikis/Mapping)
-* The [documentation for various GNOME libraries](https://devdocs.baznga.org/) in JavaScript
-
-## Communication
-
-If you want to chat with the maintainers, we're on Matrix at [#weather:gnome.org](https://matrix.to/#/#weather:gnome.org)
-
+Weather data comes from the provider you choose. Their terms and
+attribution apply, and Brolly shows the attribution in the app.
