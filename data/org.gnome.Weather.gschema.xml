@@ -22,5 +22,36 @@
       <summary>Window maximized</summary>
       <description>Whether or not the window is maximized.</description>
     </key>
+    <key name="provider" type="s">
+      <choices>
+        <choice value="libgweather"/>
+        <choice value="open-meteo"/>
+        <choice value="met-office"/>
+        <choice value="openweathermap"/>
+      </choices>
+      <default>'libgweather'</default>
+      <summary>Weather provider</summary>
+      <description>
+        Where weather data comes from. "libgweather" uses the backends built
+        into libgweather (see libgweather-providers); the others are fetched
+        directly. API keys for providers that need one are kept in the keyring.
+      </description>
+    </key>
+    <key name="libgweather-providers" type="as">
+      <default>['metar', 'met-no', 'owm']</default>
+      <summary>libgweather backends</summary>
+      <description>
+        Backends libgweather may use when provider is "libgweather". Any of
+        "metar", "met-no", "owm" and "nws".
+      </description>
+    </key>
+    <key name="open-meteo-model" type="s">
+      <default>'best_match'</default>
+      <summary>Open-Meteo weather model</summary>
+      <description>
+        The Open-Meteo "models" parameter, e.g. "best_match", "ukmo_seamless"
+        or "ecmwf_ifs025".
+      </description>
+    </key>
   </schema>
 </schemalist>

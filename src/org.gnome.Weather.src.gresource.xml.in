@@ -11,10 +11,13 @@
     <file>app/dailyForecast.js</file>
     <file>app/entry.js</file>
     <file>app/main.js</file>
+    <file>app/preferences.js</file>
     <file>app/shell.js</file>
     <file>app/window.js</file>
     <file>app/world.js</file>
     <file>misc/util.js</file>
     <file>shared/world.js</file>
+    <file>shared/weatherInfo.js</file>
+    <file>shared/providers.js</file>
   </gresource>
 </gresources>

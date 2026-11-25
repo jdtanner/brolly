@@ -22,16 +22,14 @@ import Gio from 'gi://Gio';
 import GWeather from 'gi://GWeather';
 
 import * as Util from '../misc/util.js';
+import * as Providers from './providers.js';
+import {WeatherInfo} from './weatherInfo.js';
 
-type GWeatherInfoData = GWeather.Info & {
-    _isCurrentLocation?: boolean;
-    _loadingId?: number;
-};
+type GWeatherInfoData = WeatherInfo;
 
 export class WorldModel extends GObject.Object {
     private world?: GWeather.Location;
     private settings: Gio.Settings;
-    private providers: number;
     private loadingCount: number;
     private currentLocationInfo?: GWeatherInfoData;
     private selectedLocation?: GWeatherInfoData;
@@ -44,7 +42,7 @@ export class WorldModel extends GObject.Object {
             {
                 Signals: {
                     'selected-location-changed': {
-                        param_types: [GWeather.Info.$gtype],
+                        param_types: [WeatherInfo.$gtype],
                     },
                 },
                 Properties: {
@@ -68,7 +66,13 @@ export class WorldModel extends GObject.Object {
         this.world = world;
 
         this.settings = Util.getSettings('org.gnome.Weather');
-        this.providers = Util.getEnabledProviders();
+        for (const key of [
+            'provider',
+            'libgweather-providers',
+            'open-meteo-model',
+        ]) {
+            this.settings.connect(`changed::${key}`, () => this.rebuildInfos());
+        }
 
         this.loadingCount = 0;
 
@@ -176,10 +180,56 @@ export class WorldModel extends GObject.Object {
         if (wasLoading != isLoading) this.notify('loading');
     }
 
-    public updateInfo(info: GWeather.Info & {_loadingId?: number}): void {
+    /**
+     * Recreate every info with the current provider settings, keeping the
+     * same locations, order, selection and current location.
+     */
+    public rebuildInfos(): void {
+        const swap = (old?: GWeatherInfoData): GWeatherInfoData | undefined => {
+            if (!old) return undefined;
+            if (old._loadingId) {
+                old.disconnect(old._loadingId);
+                old._loadingId = 0;
+                this.updateLoadingCount(-1);
+            }
+            const info = this.buildInfo(old.location);
+            info._isCurrentLocation = old._isCurrentLocation;
+            return info;
+        };
+
+        const mapping = new Map<GWeatherInfoData, GWeatherInfoData>();
+        this.infoList = this.infoList.map(old => {
+            const info = swap(old) ?? old;
+            mapping.set(old, info);
+            return info;
+        });
+
+        const remap = (old?: GWeatherInfoData): GWeatherInfoData | undefined =>
+            old ? (mapping.get(old) ?? swap(old)) : undefined;
+        this.currentLocationInfo = remap(this.currentLocationInfo);
+        this.selectedLocation = remap(this.selectedLocation);
+
+        for (const info of new Set([
+            ...this.infoList,
+            ...(this.currentLocationInfo ? [this.currentLocationInfo] : []),
+            ...(this.selectedLocation ? [this.selectedLocation] : []),
+        ]))
+            this.updateInfo(info);
+
+        const oldLength = this.allInfos.length;
+        this.getAll();
+        // @ts-expect-error ts-for-gir doesn't know how to handle interfaces
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        this.items_changed(0, oldLength, this.allInfos.length);
+
+        if (this.selectedLocation)
+            this.emit('selected-location-changed', this.selectedLocation);
+    }
+
+    public updateInfo(info: GWeatherInfoData): void {
         if (info._loadingId) return;
 
-        info._loadingId = info.connect('updated', info => {
+        info._loadingId = info.connect('updated', () => {
             if (info._loadingId) {
                 info.disconnect(info._loadingId);
                 info._loadingId = 0;
@@ -196,17 +246,17 @@ export class WorldModel extends GObject.Object {
         return this.loadingCount > 0;
     }
 
-    public setSelectedLocation(info: GWeather.Info): void {
+    public setSelectedLocation(info: WeatherInfo): void {
         const newInfo = this.addNewLocation(info.get_location());
         this.selectedLocation = newInfo;
         this.emit('selected-location-changed', info);
     }
 
-    public isSelectedLocation(info: GWeather.Info): boolean {
+    public isSelectedLocation(info: WeatherInfo): boolean {
         return !!this.selectedLocation && this.selectedLocation === info;
     }
 
-    public isCurrentLocation(info: GWeather.Info): boolean {
+    public isCurrentLocation(info: WeatherInfo): boolean {
         return !!this.currentLocationInfo && this.currentLocationInfo === info;
     }
 
@@ -311,13 +361,7 @@ export class WorldModel extends GObject.Object {
     }
 
     public buildInfo(location: GWeather.Location): GWeatherInfoData {
-        return new GWeather.Info({
-            application_id: pkg.name,
-            contact_info:
-                'https://gitlab.gnome.org/GNOME/gnome-weather/-/raw/master/gnome-weather.doap',
-            location,
-            enabled_providers: this.providers,
-        });
+        return Providers.buildInfo(this.settings, location);
     }
 
     private addLocationInternal(
@@ -334,7 +378,7 @@ export class WorldModel extends GObject.Object {
         return info;
     }
 
-    private addInfoInternal(info: GWeather.Info): void {
+    private addInfoInternal(info: WeatherInfo): void {
         this.infoList.unshift(info);
         this.updateInfo(info);
 
@@ -347,7 +391,7 @@ export class WorldModel extends GObject.Object {
     }
 
     public vfunc_get_item_type(): GObject.GType {
-        return GWeather.Info.$gtype;
+        return WeatherInfo.$gtype;
     }
 
     public vfunc_get_n_items(): number {

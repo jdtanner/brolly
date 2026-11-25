@@ -31,6 +31,7 @@ import {WeatherApplication} from './application.js';
 import {MainWindow} from './window.js';
 import {HourlyForecastBox} from './hourlyForecast.js';
 import {DailyForecastBox} from './dailyForecast.js';
+import {RemoteInfo, WeatherInfo} from '../shared/weatherInfo.js';
 
 const SCROLLING_ANIMATION_TIME = 400000; //us
 
@@ -56,7 +57,7 @@ export class WeatherWidget extends Adw.Bin {
     private tickId: number;
     private updatedTime?: number;
     private updatedTimeTimeoutId: number;
-    private info?: GWeather.Info;
+    private info?: WeatherInfo;
 
     static {
         GObject.registerClass(
@@ -238,7 +239,7 @@ export class WeatherWidget extends Adw.Bin {
         return this._forecastStack;
     }
 
-    public update(info: GWeather.Info): void {
+    public update(info: WeatherInfo): void {
         this.info = info;
 
         const label = Util.getNameAndCountry(this.info.location);
@@ -334,10 +335,11 @@ WeatherWidget.set_layout_manager_type(Adw.ClampLayout.$gtype);
 export class WeatherView extends Adw.Bin {
     declare private _stack: Gtk.Stack;
 
-    private _info?: GWeather.Info;
+    private _info?: WeatherInfo;
 
     private updateId?: number;
     private infoPage: WeatherWidget;
+    private errorPage: Adw.StatusPage;
 
     static {
         GObject.registerClass(
@@ -358,9 +360,23 @@ export class WeatherView extends Adw.Bin {
 
         this.infoPage = new WeatherWidget(application, window);
         this._stack.add_named(this.infoPage, 'info');
+
+        const retry = new Gtk.Button({
+            label: _('_Retry'),
+            use_underline: true,
+            halign: Gtk.Align.CENTER,
+            css_classes: ['pill', 'suggested-action'],
+        });
+        retry.connect('clicked', () => this.update());
+        this.errorPage = new Adw.StatusPage({
+            icon_name: 'network-error-symbolic',
+            title: _('Weather Unavailable'),
+            child: retry,
+        });
+        this._stack.add_named(this.errorPage, 'error');
     }
 
-    public get info(): GWeather.Info | undefined {
+    public get info(): WeatherInfo | undefined {
         return this._info;
     }
 
@@ -376,7 +392,7 @@ export class WeatherView extends Adw.Bin {
 
         if (info) {
             this._stack.visible_child_name = 'loading';
-            this.updateId = this._info?.connect('updated', info => {
+            this.updateId = this._info?.connect('updated', () => {
                 this.onUpdate(info);
             });
 
@@ -409,8 +425,18 @@ export class WeatherView extends Adw.Bin {
         }
     }
 
-    private onUpdate(info: GWeather.Info): void {
+    private onUpdate(info: WeatherInfo): void {
         this.infoPage.clear();
+        if (!info.is_valid()) {
+            const error =
+                info instanceof RemoteInfo ? info.getError() : undefined;
+            this.errorPage.description = GLib.markup_escape_text(
+                error ?? _('Could not fetch weather data for this location.'),
+                -1
+            );
+            this._stack.visible_child_name = 'error';
+            return;
+        }
         this.infoPage.update(info);
         this._stack.visible_child_name = 'info';
     }

@@ -18,7 +18,14 @@
 
 pkg.initGettext();
 pkg.initFormat();
-pkg.require({Gio: '2.0', GLib: '2.0', GObject: '2.0', GWeather: '4.0'});
+pkg.require({
+    Gio: '2.0',
+    GLib: '2.0',
+    GObject: '2.0',
+    GWeather: '4.0',
+    Soup: '3.0',
+    Secret: '1',
+});
 
 import * as system from 'system';
 
@@ -111,13 +118,14 @@ export class WeatherBackgroundService extends Gio.Application {
 }
 
 export function main(argv: string[] | null): void {
-    setTimeout(() => {
-        imports.mainloop.quit('search-provider');
-
-        const code = new WeatherBackgroundService().run(argv);
-
-        if (code !== 0) system.exit(code);
-    });
-
-    imports.mainloop.run('search-provider');
+    // runAsync() keeps the JS promise job queue running for the providers.
+    new WeatherBackgroundService()
+        .runAsync(argv ?? [])
+        .then(code => {
+            if (code !== 0) system.exit(code);
+        })
+        .catch((e: unknown) => {
+            console.error(e);
+            system.exit(1);
+        });
 }

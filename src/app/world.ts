@@ -28,9 +28,10 @@ import {LocationSearchEntry} from './entry.js';
 import {MainWindow} from './window.js';
 import {WeatherApplication} from './application.js';
 import {WorldModel} from '../shared/world.js';
+import {WeatherInfo} from '../shared/weatherInfo.js';
 
 type ListBoxRowWithInfo = Gtk.ListBoxRow & {
-    _info?: GWeather.Info;
+    _info?: WeatherInfo;
 };
 
 export class WorldContentView extends Gtk.Popover {
@@ -90,7 +91,7 @@ export class WorldContentView extends Gtk.Popover {
         );
         this._listbox = builder.get_object('locations-list-box');
         this._listbox.bind_model(
-            this.model as unknown as Gio.ListModel<GWeather.Info>,
+            this.model as unknown as Gio.ListModel<WeatherInfo>,
             info => {
                 return this.buildLocation(this.model, info);
             }
@@ -149,7 +150,7 @@ export class WorldContentView extends Gtk.Popover {
 
         this.model.connect(
             'selected-location-changed',
-            (_, info: GWeather.Info) => {
+            (_, info: WeatherInfo) => {
                 this._window?.showInfo(info);
             }
         );
@@ -180,7 +181,7 @@ export class WorldContentView extends Gtk.Popover {
 
     private buildLocation(
         model: WorldModel,
-        info: GWeather.Info
+        info: WeatherInfo
     ): ListBoxRowWithInfo | LocationRow {
         if (!info) return new LocationRow({name: '', countryName: ''});
 

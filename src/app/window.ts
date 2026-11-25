@@ -20,13 +20,14 @@ import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
 import GObject from 'gi://GObject';
 import Gtk from 'gi://Gtk';
-import GWeather from 'gi://GWeather';
 
 import * as City from './city.js';
 import * as Util from '../misc/util.js';
 import {WorldContentView} from './world.js';
+import {PreferencesDialog} from './preferences.js';
 import {WeatherApplication} from './application.js';
 import {WorldModel} from '../shared/world.js';
+import {WeatherInfo} from '../shared/weatherInfo.js';
 
 export class MainWindow extends Adw.ApplicationWindow {
     declare private _searchView: Adw.ToolbarView;
@@ -79,6 +80,15 @@ export class MainWindow extends Adw.ApplicationWindow {
         });
         aboutAction.connect('activate', () => this.showAbout());
         this.add_action(aboutAction);
+
+        const preferencesAction = new Gio.SimpleAction({
+            enabled: true,
+            name: 'preferences',
+        });
+        preferencesAction.connect('activate', () =>
+            new PreferencesDialog().present(this)
+        );
+        this.add_action(preferencesAction);
 
         const refreshAction = new Gio.SimpleAction({
             enabled: true,
@@ -153,7 +163,7 @@ export class MainWindow extends Adw.ApplicationWindow {
         this._stack.set_visible_child(this._searchView);
     }
 
-    public showInfo(info?: GWeather.Info): void {
+    public showInfo(info?: WeatherInfo): void {
         if (!info) {
             this.showDefault();
             return;

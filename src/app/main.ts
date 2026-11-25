@@ -23,6 +23,8 @@ import 'gi://GObject?version=2.0';
 import 'gi://Gtk?version=4.0';
 import 'gi://Adw?version=1';
 import 'gi://GWeather?version=4.0';
+import 'gi://Soup?version=3.0';
+import 'gi://Secret?version=1';
 
 import * as system from 'system';
 
@@ -46,15 +48,11 @@ globalThis.getApp = function (): WeatherApplication | undefined {
 
 const application = new WeatherApplication();
 
-setTimeout(() => {
-    imports.mainloop.quit('gnome-weather');
+// runAsync() (rather than run() inside a nested main loop) keeps the JS
+// promise job queue running, which the libsoup-based providers rely on.
+const code = await application.runAsync([
+    system.programInvocationName,
+    ...system.programArgs,
+]);
 
-    const code = application.run([
-        system.programInvocationName,
-        ...system.programArgs,
-    ]);
-
-    if (code !== 0) system.exit(code);
-});
-
-imports.mainloop.run('gnome-weather');
+if (code !== 0) system.exit(code);

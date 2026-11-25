@@ -14,6 +14,8 @@ gjs = dependency('gjs-1.0', version: '>= 1.71.0')
 dependency('libgeoclue-2.0', version: '>= 0.12.99')
 dependency('libadwaita-1', version: '>=  1.4.alpha')
 dependency('gweather4', version: '>= 3.90.0')
+dependency('libsoup-3.0')
+dependency('libsecret-1')
 
 # Profiles
 if get_option('profile') == 'development'

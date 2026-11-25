@@ -5,5 +5,7 @@
     <file>service/searchProvider.js</file>
     <file>misc/util.js</file>
     <file>shared/world.js</file>
+    <file>shared/weatherInfo.js</file>
+    <file>shared/providers.js</file>
   </gresource>
 </gresources>

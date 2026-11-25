@@ -19,15 +19,15 @@
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import Gtk from 'gi://Gtk';
-import GWeather from 'gi://GWeather';
 import Adw from 'gi://Adw';
 
 import * as Thermometer from './thermometer.js';
 import * as Util from '../misc/util.js';
+import {WeatherInfo} from '../shared/weatherInfo.js';
 
 type DayInfo = {
     day: GLib.DateTime;
-    infos: GWeather.Info[];
+    infos: WeatherInfo[];
 };
 
 type PreprocessedInfo = {
@@ -37,11 +37,11 @@ type PreprocessedInfo = {
 };
 
 type PeriodInfos = {
-    day: GWeather.Info;
-    night: GWeather.Info;
-    morning: GWeather.Info;
-    afternoon: GWeather.Info;
-    evening: GWeather.Info;
+    day: WeatherInfo;
+    night: WeatherInfo;
+    morning: WeatherInfo;
+    afternoon: WeatherInfo;
+    evening: WeatherInfo;
 };
 
 function addDay(base: GLib.DateTime): GLib.DateTime {
@@ -74,7 +74,7 @@ export class DailyForecastBox extends Gtk.Box {
     }
 
     // get infos for the correct day
-    private preprocess(infos: GWeather.Info[]): PreprocessedInfo {
+    private preprocess(infos: WeatherInfo[]): PreprocessedInfo {
         let i;
 
         let day = GLib.DateTime.new_now_local();
@@ -122,7 +122,7 @@ export class DailyForecastBox extends Gtk.Box {
         };
     }
 
-    public update(info: GWeather.Info): void {
+    public update(info: WeatherInfo): void {
         const forecasts = info.get_forecast_list();
 
         const forecast = this.preprocess(forecasts);
@@ -160,7 +160,7 @@ export class DailyForecastBox extends Gtk.Box {
         const minTemp = Math.min(...temperatures);
         const maxTemp = Math.max(...temperatures);
 
-        const periodInfos: Record<string, GWeather.Info> = {};
+        const periodInfos: Record<string, WeatherInfo> = {};
         const times: Record<string, GLib.DateTime> = {
             day: Util.getDay(datetime),
             night: Util.getNight(datetime),
@@ -283,11 +283,11 @@ export class DayEntry extends Adw.Bin {
         weekLowestTemp: number;
         maxTemp: number;
         minTemp: number;
-        day: GWeather.Info;
-        night: GWeather.Info;
-        morning: GWeather.Info;
-        afternoon: GWeather.Info;
-        evening: GWeather.Info;
+        day: WeatherInfo;
+        night: WeatherInfo;
+        morning: WeatherInfo;
+        afternoon: WeatherInfo;
+        evening: WeatherInfo;
     }) {
         const {
             datetime,
@@ -368,13 +368,7 @@ export class DayEntry extends Adw.Bin {
         this.setWindInfo(eveningInfo, this._eveningWind);
     }
 
-    private setWindInfo(info: GWeather.Info, label: Gtk.Label): void {
-        const [ok, speed] = info.get_value_wind(GWeather.SpeedUnit.DEFAULT);
-        if (ok) {
-            label.label = `${speed.toFixed(1)} ${GWeather.speed_unit_to_string(GWeather.SpeedUnit.DEFAULT)}`;
-        } else {
-            /* Fall back to get_wind() */
-            label.label = info.get_wind();
-        }
+    private setWindInfo(info: WeatherInfo, label: Gtk.Label): void {
+        label.label = info.getWindSpeedString();
     }
 }

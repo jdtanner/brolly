@@ -31,6 +31,7 @@ import Gtk from 'gi://Gtk';
 import GWeather from 'gi://GWeather';
 
 import * as System from 'system';
+import {WeatherInfo} from '../shared/weatherInfo.js';
 
 function loadUI(
     resourcePath: string,
@@ -64,7 +65,7 @@ function getSettings(schemaId: string): Gio.Settings {
     return new Gio.Settings({settings_schema: schemaObj});
 }
 
-function getWeatherConditions(info: GWeather.Info): string {
+function getWeatherConditions(info: WeatherInfo): string {
     let conditions = info.get_conditions();
     if (conditions == '-')
         // Not significant
@@ -96,7 +97,7 @@ function normalizeCasefoldAndUnaccent(str: string | null): string {
     );
 }
 
-function getTemperature(info: GWeather.Info): string {
+function getTemperature(info: WeatherInfo): string {
     const [ok1] = info.get_value_temp_min(GWeather.TemperatureUnit.DEFAULT);
     const [ok2] = info.get_value_temp_max(GWeather.TemperatureUnit.DEFAULT);
 
@@ -108,14 +109,6 @@ function getTemperature(info: GWeather.Info): string {
     } else {
         return info.get_temp_summary();
     }
-}
-
-function getEnabledProviders(): number {
-    return (
-        GWeather.Provider.METAR |
-        GWeather.Provider.MET_NO |
-        GWeather.Provider.OWM
-    );
 }
 
 function easeOutCubic(value: number): number {
@@ -178,12 +171,12 @@ function getEvening(date: GLib.DateTime): GLib.DateTime {
     );
 }
 
-function getDateTime(info: GWeather.Info): GLib.DateTime {
+function getDateTime(info: WeatherInfo): GLib.DateTime {
     const [, date] = info.get_value_update();
     return GLib.DateTime.new_from_unix_local(date);
 }
 
-function getTemp(info: GWeather.Info): number {
+function getTemp(info: WeatherInfo): number {
     const [, temp] = info.get_value_temp(GWeather.TemperatureUnit.DEFAULT);
     return temp;
 }
@@ -192,7 +185,7 @@ function formatTemperature(value: number): string {
     return `${Math.round(value).toFixed(0)}°`;
 }
 
-function getTempString(info: GWeather.Info): string {
+function getTempString(info: WeatherInfo): string {
     try {
         const [, temp] = info.get_value_temp(GWeather.TemperatureUnit.DEFAULT);
         return formatTemperature(temp);
@@ -228,7 +221,6 @@ export {
     getTemperature,
     getDay,
     easeOutCubic,
-    getEnabledProviders,
     getWeatherConditions,
     getNameAndCountry,
 };

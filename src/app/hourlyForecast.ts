@@ -26,6 +26,7 @@ import Graphene from 'gi://Graphene';
 import Adw from 'gi://Adw';
 
 import * as Util from '../misc/util.js';
+import {WeatherInfo} from '../shared/weatherInfo.js';
 
 // In microseconds
 const ONE_HOUR = 60 * 60 * 1000 * 1000;
@@ -34,7 +35,7 @@ const TWENTY_FOUR_HOURS = 24 * ONE_HOUR;
 export class HourlyForecastBox extends Gtk.Box {
     private _hasForecastInfo: boolean;
 
-    private hourlyInfo: GWeather.Info[];
+    private hourlyInfo: WeatherInfo[];
     private settings: Gio.Settings;
 
     static {
@@ -64,9 +65,9 @@ export class HourlyForecastBox extends Gtk.Box {
     // remove infos for the wrong day
     private preprocess(
         now: GLib.DateTime,
-        forecastInfo: GWeather.Info,
-        infos: GWeather.Info[]
-    ): GWeather.Info[] {
+        forecastInfo: WeatherInfo,
+        infos: WeatherInfo[]
+    ): WeatherInfo[] {
         const ret = [forecastInfo, ...infos].filter(info => {
             const [, date] = info.get_value_update();
             const datetime = GLib.DateTime.new_from_unix_utc(date).to_timezone(
@@ -86,7 +87,7 @@ export class HourlyForecastBox extends Gtk.Box {
         return ret;
     }
 
-    public update(info: GWeather.Info): void {
+    public update(info: WeatherInfo): void {
         const forecasts = info.get_forecast_list();
 
         const coords = info.location.get_coords();
@@ -123,7 +124,7 @@ export class HourlyForecastBox extends Gtk.Box {
     }
 
     private addHourEntry(
-        info: GWeather.Info,
+        info: WeatherInfo,
         tz: GLib.TimeZone | null,
         now: boolean
     ): void {
@@ -326,7 +327,7 @@ export class HourEntry extends Adw.Bin {
 
     public constructor(
         timeLabel: string | undefined,
-        info: GWeather.Info,
+        info: WeatherInfo,
         params?: Partial<Adw.Bin.ConstructorProps>
     ) {
         super(params);
