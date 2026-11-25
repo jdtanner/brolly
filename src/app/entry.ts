@@ -6,6 +6,7 @@ import Gtk from 'gi://Gtk';
 import GWeather from 'gi://GWeather';
 
 import * as Util from '../misc/util.js';
+import * as Providers from '../shared/providers.js';
 import {LocationRow} from './locationRow.js';
 
 function* locationChildren(
@@ -19,7 +20,7 @@ function* locationChildren(
     }
 }
 
-function getAllCitiesAndWeatherStations(): GWeather.Location[] {
+function getAllCities(): GWeather.Location[] {
     const locations = new Set<GWeather.Location>();
     const world = GWeather.Location.get_world();
 
@@ -34,19 +35,12 @@ function getAllCitiesAndWeatherStations(): GWeather.Location[] {
                         )) {
                             const level = cityOrStation.get_level();
 
-                            if (level === GWeather.LocationLevel.CITY) {
+                            // Cities only: weather stations are mostly
+                            // airports, and the online search covers towns.
+                            if (level === GWeather.LocationLevel.CITY)
                                 locations.add(cityOrStation);
-                            } else if (
-                                level === GWeather.LocationLevel.WEATHER_STATION
-                            ) {
-                                locations.add(cityOrStation);
-                            }
                         }
                     } else if (level === GWeather.LocationLevel.CITY) {
-                        locations.add(location);
-                    } else if (
-                        level === GWeather.LocationLevel.WEATHER_STATION
-                    ) {
                         locations.add(location);
                     }
                 }
@@ -76,7 +70,7 @@ class LocationListModel extends GObject.Object {
     }
 
     public load(): void {
-        const items = getAllCitiesAndWeatherStations();
+        const items = getAllCities();
         this.list.push(...items);
 
         // @ts-expect-error ts-for-gir interface stuff
@@ -153,6 +147,13 @@ export class LocationSearchEntry extends Adw.Bin {
     private entry: Gtk.SearchEntry;
     private listView?: Gtk.ListView;
     private filter: LocationFilter;
+    private localMatches: Gtk.FilterListModel;
+    private onlineResults: Gio.ListStore;
+    // Keyed by the location objects held in onlineResults (a strong Map, so
+    // the JS wrappers stay alive and lookups hit); reset per search.
+    private onlineDetails = new Map<GWeather.Location, string>();
+    private searchTimeoutId = 0;
+    private searchSerial = 0;
     private model: Gtk.SingleSelection;
     private factory: Gtk.SignalListItemFactory;
 
@@ -199,14 +200,23 @@ export class LocationSearchEntry extends Adw.Bin {
         });
 
         this.filter = new LocationFilter();
+        this.localMatches = new Gtk.FilterListModel({
+            model: locationListModel as unknown as Gio.ListModel,
+            filter: this.filter,
+            incremental: true,
+        });
+        // Towns and villages from the online search, after the built-in
+        // (libgweather) cities.
+        this.onlineResults = new Gio.ListStore({
+            item_type: GWeather.Location.$gtype,
+        });
+        const sections = new Gio.ListStore({item_type: Gio.ListModel.$gtype});
+        sections.append(this.localMatches);
+        sections.append(this.onlineResults);
         this.model = new Gtk.SingleSelection({
             selected: GLib.MAXUINT32,
             autoselect: false,
-            model: new Gtk.FilterListModel({
-                model: locationListModel as unknown as Gio.ListModel,
-                filter: this.filter,
-                incremental: true,
-            }),
+            model: new Gtk.FlattenListModel({model: sections}),
         });
 
         this.factory = new Gtk.SignalListItemFactory();
@@ -228,6 +238,7 @@ export class LocationSearchEntry extends Adw.Bin {
 
         this.entry.connect('search-changed', source => {
             this.filter.setFilterString(source.text);
+            this.queueOnlineSearch(source.text);
             this.emit('search-updated', source.text);
         });
 
@@ -250,9 +261,71 @@ export class LocationSearchEntry extends Adw.Bin {
                 const [name, countryName = ''] = Util.getNameAndCountry(item);
 
                 child.name = name;
-                child.countryName = countryName;
+                child.countryName = this.onlineDetails.get(item) ?? countryName;
             }
         });
+    }
+
+    private queueOnlineSearch(text: string): void {
+        if (this.searchTimeoutId) GLib.source_remove(this.searchTimeoutId);
+        this.searchTimeoutId = 0;
+        const serial = ++this.searchSerial;
+        this.onlineResults.remove_all();
+        this.onlineDetails.clear();
+
+        if (text.trim().length < 3) return;
+
+        // Wait for a pause in typing.
+        this.searchTimeoutId = GLib.timeout_add(
+            GLib.PRIORITY_DEFAULT,
+            400,
+            () => {
+                this.searchTimeoutId = 0;
+                void this.runOnlineSearch(text, serial);
+                return GLib.SOURCE_REMOVE;
+            }
+        );
+    }
+
+    private async runOnlineSearch(text: string, serial: number): Promise<void> {
+        let places: Providers.PlaceResult[];
+        try {
+            places = await Providers.searchPlaces(text);
+        } catch (e) {
+            console.warn(`Place search failed: ${String(e)}`);
+            return;
+        }
+        if (serial !== this.searchSerial) return; // superseded
+
+        // Skip places the built-in list already offered (same name nearby).
+        const local: GWeather.Location[] = [];
+        for (let i = 0; i < this.localMatches.get_n_items(); i++) {
+            const item = this.localMatches.get_item(i);
+            if (item instanceof GWeather.Location) local.push(item);
+        }
+        const duplicate = (p: Providers.PlaceResult): boolean =>
+            local.some(l => {
+                if (l.get_name()?.toLowerCase() !== p.name.toLowerCase())
+                    return false;
+                if (!l.has_coords()) return true;
+                const [lat, lon] = l.get_coords();
+                return (
+                    Math.abs(lat - p.latitude) < 0.1 &&
+                    Math.abs(lon - p.longitude) < 0.1
+                );
+            });
+
+        for (const place of places) {
+            if (duplicate(place)) continue;
+            const location = GWeather.Location.new_detached(
+                place.name,
+                null,
+                place.latitude,
+                place.longitude
+            );
+            this.onlineDetails.set(location, place.detail);
+            this.onlineResults.append(location);
+        }
     }
 
     public get text(): string {

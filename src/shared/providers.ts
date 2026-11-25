@@ -396,6 +396,63 @@ export async function reverseGeocode(
     }
 }
 
+/* ---------- Place search (Open-Meteo geocoding / GeoNames) ---------- */
+
+export type PlaceResult = {
+    name: string;
+    /** e.g. "Derbyshire, United Kingdom" */
+    detail: string;
+    countryCode: string;
+    latitude: number;
+    longitude: number;
+};
+
+/**
+ * Search towns and villages by name. Uses Open-Meteo's geocoding API, which
+ * (unlike Nominatim) permits search-as-you-type. Only the typed text is
+ * sent. Places in the user's own country are listed first.
+ */
+export async function searchPlaces(query: string): Promise<PlaceResult[]> {
+    query = query.trim();
+    if (query.length < 2) return [];
+
+    const lang = (GLib.get_language_names()[0] ?? 'en').split(/[_.@]/)[0];
+    const url =
+        'https://geocoding-api.open-meteo.com/v1/search' +
+        `?name=${encodeURIComponent(query)}&count=20&format=json` +
+        `&language=${encodeURIComponent(lang === 'C' ? 'en' : lang)}`;
+    const data = (await getJson(url, {}, url, 24 * 3600)) as {
+        results?: Record<string, unknown>[];
+    };
+    const str = (v: unknown): string => (typeof v === 'string' ? v : '');
+
+    const region = /^[a-z]+_([A-Z]+)/.exec(
+        GLib.get_language_names()[0] ?? ''
+    )?.[1];
+    const places = (data.results ?? [])
+        // Populated places only (PPL, PPLA, PPLC, ...), not islands etc.
+        .filter(r => str(r.feature_code).startsWith('PPL'))
+        .map(r => ({
+            name: str(r.name),
+            detail: [r.admin2 ?? r.admin1, r.country]
+                .filter(x => typeof x === 'string' && x)
+                .join(', '),
+            countryCode: str(r.country_code),
+            latitude: num(r.latitude) ?? NaN,
+            longitude: num(r.longitude) ?? NaN,
+        }))
+        .filter(p => p.name && Number.isFinite(p.latitude));
+
+    // Stable sort: own country first, otherwise keep the API's ranking.
+    return places
+        .sort(
+            (a, b) =>
+                Number(b.countryCode === region) -
+                Number(a.countryCode === region)
+        )
+        .slice(0, 10);
+}
+
 /* ---------- Open-Meteo ---------- */
 
 function wmoCondition(code: number | undefined): Condition {
